@@ -115,6 +115,7 @@ if (!fs.existsSync(publicDir)) {
 }
 
 fs.writeFileSync(path.join(publicDir, 'pwa-192x192.png'), generatePNG(192, 192, false));
+fs.writeFileSync(path.join(publicDir, 'pwa-maskable-192x192.png'), generatePNG(192, 192, true));
 fs.writeFileSync(path.join(publicDir, 'pwa-512x512.png'), generatePNG(512, 512, false));
 fs.writeFileSync(path.join(publicDir, 'pwa-maskable-512x512.png'), generatePNG(512, 512, true));
 fs.writeFileSync(path.join(publicDir, 'apple-touch-icon.png'), generatePNG(180, 180, true));

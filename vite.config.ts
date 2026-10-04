@@ -1,6 +1,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import fs from 'fs';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -9,6 +10,22 @@ export default defineConfig(() => {
     plugins: [
       react(),
       tailwindcss(),
+      {
+        name: 'serve-pwa-sw',
+        configureServer(server) {
+          server.middlewares.use((req, res, next) => {
+            if (req.url === '/sw.js') {
+              const swPath = path.resolve(__dirname, 'public/sw.js');
+              if (fs.existsSync(swPath)) {
+                res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+                res.setHeader('Service-Worker-Allowed', '/');
+                return fs.createReadStream(swPath).pipe(res);
+              }
+            }
+            next();
+          });
+        },
+      },
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg'],
@@ -31,6 +48,12 @@ export default defineConfig(() => {
               sizes: '192x192',
               type: 'image/png',
               purpose: 'any',
+            },
+            {
+              src: '/pwa-maskable-192x192.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'maskable',
             },
             {
               src: '/pwa-512x512.png',
