@@ -1,4 +1,4 @@
-const CACHE_NAME = 'workshop-cache-v4';
+const CACHE_NAME = 'workshop-cache-v5';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.webmanifest',
@@ -13,6 +13,7 @@ const PRECACHE_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_ASSETS).catch((err) => {
@@ -32,7 +33,7 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
 });
 
@@ -42,6 +43,16 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
   if (!url.protocol.startsWith('http')) return;
+
+  // Never intercept auth, cookie check, or internal control plane requests
+  if (
+    url.pathname.includes('cookie_check') ||
+    url.pathname.includes('__aistudio') ||
+    url.search.includes('__aistudio') ||
+    url.pathname.includes('applet-auth')
+  ) {
+    return;
+  }
 
   // For HTML navigation: Network-first to always stay updated and never loop
   if (event.request.mode === 'navigate') {
@@ -64,6 +75,8 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, resClone));
         }
         return res;
+      }).catch(() => {
+        return new Response('', { status: 408, statusText: 'Request timed out' });
       });
     })
   );

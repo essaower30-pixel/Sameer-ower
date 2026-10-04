@@ -1,14 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
-interface BeforeInstallPromptEvent extends Event {
+export interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 }
 
 export function usePWAInstall() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(() => {
+    if (
+      typeof window !== 'undefined' &&
+      (window as unknown as { __pwaInstallPrompt?: BeforeInstallPromptEvent }).__pwaInstallPrompt
+    ) {
+      return (window as unknown as { __pwaInstallPrompt: BeforeInstallPromptEvent }).__pwaInstallPrompt;
+    }
+    return null;
+  });
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
 
   useEffect(() => {
     // Detect standalone mode (already installed)
@@ -17,46 +26,89 @@ export function usePWAInstall() {
       (window.navigator as unknown as { standalone?: boolean }).standalone === true;
     setIsInstalled(isStandalone);
 
-    // Detect iOS devices
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent);
-    setIsIOS(isIOSDevice);
+    const ua = window.navigator.userAgent.toLowerCase();
+    setIsIOS(/iphone|ipad|ipod/.test(ua));
+    setIsAndroid(/android/.test(ua));
+
+    // Check if global prompt was set early
+    const globalPrompt = (window as unknown as { __pwaInstallPrompt?: BeforeInstallPromptEvent }).__pwaInstallPrompt;
+    if (globalPrompt) {
+      setDeferredPrompt(globalPrompt);
+    }
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      const promptEvent = e as BeforeInstallPromptEvent;
+      (window as unknown as { __pwaInstallPrompt?: BeforeInstallPromptEvent }).__pwaInstallPrompt = promptEvent;
+      setDeferredPrompt(promptEvent);
+    };
+
+    const handlePromptReady = () => {
+      const p = (window as unknown as { __pwaInstallPrompt?: BeforeInstallPromptEvent }).__pwaInstallPrompt;
+      if (p) {
+        setDeferredPrompt(p);
+      }
     };
 
     const handleAppInstalled = () => {
       setIsInstalled(true);
       setDeferredPrompt(null);
+      (window as unknown as { __pwaInstallPrompt?: BeforeInstallPromptEvent | null }).__pwaInstallPrompt = null;
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('pwa-prompt-ready', handlePromptReady);
     window.addEventListener('appinstalled', handleAppInstalled);
+    window.addEventListener('pwa-installed', handleAppInstalled);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('pwa-prompt-ready', handlePromptReady);
       window.removeEventListener('appinstalled', handleAppInstalled);
+      window.removeEventListener('pwa-installed', handleAppInstalled);
     };
   }, []);
 
-  const install = async () => {
-    if (!deferredPrompt) return false;
-    await deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setIsInstalled(true);
-      setDeferredPrompt(null);
-      return true;
+  const triggerInstall = useCallback(async (): Promise<{
+    success: boolean;
+    outcome?: 'accepted' | 'dismissed';
+    hasDirectPrompt: boolean;
+  }> => {
+    const promptEvent =
+      deferredPrompt ||
+      (typeof window !== 'undefined'
+        ? (window as unknown as { __pwaInstallPrompt?: BeforeInstallPromptEvent }).__pwaInstallPrompt
+        : null);
+
+    if (promptEvent) {
+      try {
+        await promptEvent.prompt();
+        const choice = await promptEvent.userChoice;
+        if (choice.outcome === 'accepted') {
+          setIsInstalled(true);
+          setDeferredPrompt(null);
+          (window as unknown as { __pwaInstallPrompt?: BeforeInstallPromptEvent | null }).__pwaInstallPrompt = null;
+          return { success: true, outcome: 'accepted', hasDirectPrompt: true };
+        }
+        return { success: false, outcome: 'dismissed', hasDirectPrompt: true };
+      } catch (err) {
+        console.warn('Install prompt error:', err);
+        return { success: false, hasDirectPrompt: false };
+      }
     }
-    return false;
-  };
+
+    return { success: false, hasDirectPrompt: false };
+  }, [deferredPrompt]);
 
   return {
-    isInstallable: !!deferredPrompt,
+    isInstallable: !!(
+      deferredPrompt ||
+      (typeof window !== 'undefined' &&
+        (window as unknown as { __pwaInstallPrompt?: BeforeInstallPromptEvent }).__pwaInstallPrompt)
+    ),
     isInstalled,
     isIOS,
-    install,
+    isAndroid,
+    triggerInstall,
   };
 }

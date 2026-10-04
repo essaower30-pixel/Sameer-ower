@@ -22,6 +22,13 @@ export default defineConfig(() => {
                 return fs.createReadStream(swPath).pipe(res);
               }
             }
+            if (req.url === '/manifest.webmanifest' || req.url === '/manifest.json') {
+              const mPath = path.resolve(__dirname, 'public/manifest.webmanifest');
+              if (fs.existsSync(mPath)) {
+                res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+                return fs.createReadStream(mPath).pipe(res);
+              }
+            }
             next();
           });
         },
