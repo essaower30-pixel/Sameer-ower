@@ -8,26 +8,23 @@ import {
   WorkshopExpense,
   SupplierPurchaseInvoice,
   DEFAULT_SETTINGS,
+  SUPPORTED_CURRENCIES,
 } from './types';
 import { INITIAL_ORDERS, INITIAL_EXPENSES, INITIAL_PURCHASE_INVOICES } from './data/mockData';
 import { Navbar, ActiveNavTab } from './components/Navbar';
 import { OrderCard } from './components/OrderCard';
 import { OrderFormModal } from './components/OrderFormModal';
 import { InvoiceModal } from './components/InvoiceModal';
-import { QuickCalculator } from './components/QuickCalculator';
 import { FinancesPage } from './components/FinancesPage';
 import { SuppliersPage } from './components/SuppliersPage';
 import { PurchaseInvoiceModal } from './components/PurchaseInvoiceModal';
 import { PurchaseInvoiceViewModal } from './components/PurchaseInvoiceViewModal';
+import { testFirestoreConnection } from './firebase';
 import {
   Search,
   Filter,
   Plus,
   Inbox,
-  Users,
-  Truck,
-  FileText,
-  Calculator,
 } from 'lucide-react';
 
 export default function App() {
@@ -35,7 +32,14 @@ export default function App() {
   const [settings, setSettings] = useState<WorkshopSettings>(() => {
     try {
       const saved = localStorage.getItem('workshop_settings');
-      return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.currency && !SUPPORTED_CURRENCIES.some((c) => c.code === parsed.currency)) {
+          parsed.currency = '$';
+        }
+        return parsed;
+      }
+      return DEFAULT_SETTINGS;
     } catch {
       return DEFAULT_SETTINGS;
     }
@@ -61,11 +65,8 @@ export default function App() {
     }
   });
 
-  // Navigation tab: 'orders' (الزبائن - بيع) | 'suppliers' (الموردين - شراء) | 'calculator' | 'finances'
+  // Navigation tab: 'orders' (الزبائن - بيع) | 'suppliers' (الموردين - شراء) | 'finances' (الأرباح والميزانية)
   const [activeTab, setActiveTab] = useState<ActiveNavTab>('orders');
-
-  // Customer Section View Mode: 'invoices' (فواتير البيع) | 'calculator' (حاسبة المقاسات وفاتورة البيع)
-  const [customerViewMode, setCustomerViewMode] = useState<'invoices' | 'calculator'>('invoices');
 
   // Search & Filter state for Customer Orders
   const [searchQuery, setSearchQuery] = useState('');
@@ -125,6 +126,24 @@ export default function App() {
       console.error('Failed to save expenses to localStorage', e);
     }
   }, [expenses]);
+
+  // Test Firebase connection on initial boot
+  useEffect(() => {
+    testFirestoreConnection();
+  }, []);
+
+  // Full Restore Handler from Cloud or Backup
+  const handleRestoreAllData = (data: {
+    settings: WorkshopSettings;
+    orders: CustomerOrder[];
+    purchases: SupplierPurchaseInvoice[];
+    expenses: WorkshopExpense[];
+  }) => {
+    setSettings(data.settings);
+    setOrders(data.orders);
+    setPurchaseInvoices(data.purchases);
+    setExpenses(data.expenses);
+  };
 
   // Expenses Handlers
   const handleAddExpense = (newExp: Omit<WorkshopExpense, 'id'>) => {
@@ -285,7 +304,7 @@ export default function App() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-800 flex flex-col selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-slate-100/70 text-slate-800 flex flex-col selection:bg-blue-600 selection:text-white w-full overflow-x-hidden">
       {/* Top Navbar */}
       <Navbar
         activeTab={activeTab}
@@ -295,8 +314,11 @@ export default function App() {
         settings={settings}
         onSaveSettings={setSettings}
         orders={orders}
+        purchaseInvoices={purchaseInvoices}
+        expenses={expenses}
         onImportData={handleImportData}
         onResetData={handleResetData}
+        onRestoreAllData={handleRestoreAllData}
         onCurrencyChange={(newCurrency) => {
           setSettings((prev) => ({ ...prev, currency: newCurrency }));
         }}
@@ -306,64 +328,65 @@ export default function App() {
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-6 overflow-x-hidden">
         {/* Tab 1: Customers & Sales Invoices (الزبائن - فواتير البيع) */}
         {activeTab === 'orders' && (
           <div className="space-y-5 animate-in fade-in duration-200">
-            {/* View Switcher: سجل فواتير البيع | حاسبة المقاسات وفاتورة البيع */}
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2 sm:p-2.5 rounded-xl border border-slate-200 shadow-xs">
-              <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg">
-                <button
-                  type="button"
-                  onClick={() => setCustomerViewMode('invoices')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
-                    customerViewMode === 'invoices'
-                      ? 'bg-white text-blue-700 shadow-2xs ring-1 ring-slate-200/50'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <FileText className="w-3.5 h-3.5 text-blue-600" />
-                  <span>سجل فواتير البيع ({orders.length})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCustomerViewMode('calculator')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
-                    customerViewMode === 'calculator'
-                      ? 'bg-white text-blue-700 shadow-2xs ring-1 ring-slate-200/50'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <Calculator className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>حاسبة المقاسات وفاتورة البيع</span>
-                </button>
+            {/* Filter, Search & Actions Bar */}
+            <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
+              {/* Search input */}
+              <div className="relative w-full md:w-80">
+                <Search className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="ابحث باسم الزبون، رقم الهاتف، العنوان..."
+                  className="w-full text-xs sm:text-sm pl-3 pr-9 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-hidden bg-slate-50/50"
+                />
               </div>
 
-              <div className="flex items-center gap-2">
-                {customerViewMode === 'invoices' ? (
-                  <button
-                    type="button"
-                    onClick={() => setCustomerViewMode('calculator')}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+              {/* Status & Category Selectors + Action Button */}
+              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                {/* فلتر حالة الفاتورة */}
+                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs shrink-0">
+                  <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span className="text-slate-500 font-medium shrink-0">الحالة:</span>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="bg-transparent font-bold text-slate-700 focus:outline-hidden cursor-pointer"
                   >
-                    <Calculator className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>فتح حاسبة المقاسات الفورية</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setCustomerViewMode('invoices')}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    <FileText className="w-3.5 h-3.5 text-slate-600" />
-                    <span>العودة لسجل فواتير البيع</span>
-                  </button>
-                )}
+                    <option value="all">جميع الحالات</option>
+                    <option value="in_progress">قيد التصنيع</option>
+                    <option value="ready">جاهز للتركيب</option>
+                    <option value="completed">تم التسليم</option>
+                    <option value="quotation">عرض سعر</option>
+                    <option value="cancelled">ملغي</option>
+                  </select>
+                </div>
 
+                {/* فلتر صنف الشغل والخامة */}
+                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs shrink-0">
+                  <span className="text-slate-500 font-medium shrink-0">الصنف:</span>
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="bg-transparent font-bold text-slate-700 focus:outline-hidden cursor-pointer"
+                  >
+                    <option value="all">جميع الأصناف</option>
+                    <option value="aluminum">ألمنيوم وشبابيك</option>
+                    <option value="accordion">أبواب الأكرديون</option>
+                    <option value="zebra">ستائر زيبرا</option>
+                    <option value="shutters">أباجورات شتر</option>
+                  </select>
+                </div>
+
+                {/* زر إصدار فاتورة بيع */}
                 <button
                   type="button"
                   onClick={handleOpenNewOrder}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer shrink-0"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>إصدار فاتورة بيع</span>
@@ -371,126 +394,42 @@ export default function App() {
               </div>
             </div>
 
-            {/* Sub-view 1: Quick Calculator for instant sizing & sales invoicing */}
-            {customerViewMode === 'calculator' && (
-              <div className="animate-in fade-in duration-150">
-                <QuickCalculator
-                  settings={settings}
-                  currency={settings.currency}
-                  onTransferToNewOrder={(items) => {
-                    handleTransferToNewOrder(items);
-                    setCustomerViewMode('invoices');
-                  }}
-                />
+            {/* Orders Grid */}
+            {filteredOrders.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {filteredOrders.map((order) => (
+                  <OrderCard
+                    key={order.id}
+                    order={order}
+                    currency={settings.currency}
+                    workshopName={settings.workshopName}
+                    onEdit={handleEditOrder}
+                    onDelete={handleDeleteOrder}
+                    onViewInvoice={(ord) => setViewingInvoiceOrder(ord)}
+                    onStatusChange={handleStatusChange}
+                  />
+                ))}
               </div>
-            )}
-
-            {/* Sub-view 2: Sales Invoices List & Filters */}
-            {customerViewMode === 'invoices' && (
-              <div className="space-y-6">
-                {/* Filter & Search Bar */}
-                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
-                  {/* Search input */}
-                  <div className="relative w-full md:w-80">
-                    <Search className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="ابحث باسم الزبون، رقم الهاتف، العنوان..."
-                      className="w-full text-xs sm:text-sm pl-3 pr-9 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-hidden bg-slate-50/50"
-                    />
-                  </div>
-
-                  {/* Status & Category Selectors */}
-                  <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                    <div className="flex items-center gap-1 text-xs text-slate-500">
-                      <Filter className="w-3.5 h-3.5 text-slate-400" />
-                      <span>الحالة:</span>
-                    </div>
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                      className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white font-medium text-slate-700"
-                    >
-                      <option value="all">جميع الحالات</option>
-                      <option value="in_progress">قيد التصنيع</option>
-                      <option value="ready">جاهز للتركيب</option>
-                      <option value="completed">تم التسليم</option>
-                      <option value="quotation">عرض سعر مبدئي</option>
-                      <option value="cancelled">ملغي</option>
-                    </select>
-
-                    <div className="flex items-center gap-1 text-xs text-slate-500 mr-1">
-                      <span>الصنف:</span>
-                    </div>
-                    <select
-                      value={categoryFilter}
-                      onChange={(e) => setCategoryFilter(e.target.value)}
-                      className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white font-medium text-slate-700"
-                    >
-                      <option value="all">جميع الأصناف</option>
-                      <option value="aluminum">ألمنيوم وشبابيك</option>
-                      <option value="accordion">أبواب الأكرديون</option>
-                      <option value="zebra">ستائر زيبرا</option>
-                      <option value="shutters">أباجورات شتر</option>
-                    </select>
-
-                    <button
-                      onClick={handleOpenNewOrder}
-                      className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors mr-2 cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>إصدار فاتورة بيع</span>
-                    </button>
-                  </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-xs">
+                <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto text-blue-600 mb-3 border border-blue-100">
+                  <Inbox className="w-7 h-7" />
                 </div>
-
-                {/* Orders Grid */}
-                {filteredOrders.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {filteredOrders.map((order) => (
-                      <OrderCard
-                        key={order.id}
-                        order={order}
-                        currency={settings.currency}
-                        workshopName={settings.workshopName}
-                        onEdit={handleEditOrder}
-                        onDelete={handleDeleteOrder}
-                        onViewInvoice={(ord) => setViewingInvoiceOrder(ord)}
-                        onStatusChange={handleStatusChange}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-xs">
-                    <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto text-blue-600 mb-3 border border-blue-100">
-                      <Inbox className="w-7 h-7" />
-                    </div>
-                    <h3 className="font-bold text-slate-800 text-base mb-1">
-                      لا توجد فواتير بيع مطابقة للبحث أو الفلتر
-                    </h3>
-                    <p className="text-xs text-slate-500 max-w-sm mx-auto mb-4">
-                      يمكنك تغيير كلمات البحث أو إصدار فاتورة بيع لزبون جديد لحساب التكاليف والأرباح بدقة.
-                    </p>
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={handleOpenNewOrder}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>إصدار فاتورة بيع الآن</span>
-                      </button>
-                      <button
-                        onClick={() => setCustomerViewMode('calculator')}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors cursor-pointer border border-slate-200"
-                      >
-                        <Calculator className="w-4 h-4 text-emerald-600" />
-                        <span>حاسبة تفصيل المقاسات</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
+                <h3 className="font-bold text-slate-800 text-base mb-1">
+                  لا توجد فواتير بيع مطابقة للبحث أو الفلتر
+                </h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto mb-4">
+                  يمكنك تغيير كلمات البحث أو إصدار فاتورة بيع لزبون جديد لحساب المقاسات بدقة.
+                </p>
+                <div className="flex items-center justify-center gap-2">
+                  <button
+                    onClick={handleOpenNewOrder}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>إصدار فاتورة بيع الآن</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -510,18 +449,7 @@ export default function App() {
           />
         )}
 
-        {/* Tab 3: Quick Dimension Calculator (الحاسبة الفورية) */}
-        {activeTab === 'calculator' && (
-          <div className="animate-in fade-in duration-200">
-            <QuickCalculator
-              settings={settings}
-              currency={settings.currency}
-              onTransferToNewOrder={handleTransferToNewOrder}
-            />
-          </div>
-        )}
-
-        {/* Tab 4: Workshop Finances, Profit & Budget (الأرباح والميزانية) */}
+        {/* Tab 3: Workshop Finances, Profit & Budget (الأرباح والميزانية) */}
         {activeTab === 'finances' && (
           <div className="animate-in fade-in duration-200">
             <FinancesPage

@@ -465,9 +465,15 @@ export const FinancesPage: React.FC<Props> = ({
                 </span>
               </div>
             </div>
-            <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-              هامش صافي الربح: +{netRealMargin}%
-            </span>
+            {netRealProfit >= 0 ? (
+              <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                هامش صافي الربح: +{netRealMargin}%
+              </span>
+            ) : (
+              <span className="text-xs font-mono font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-300">
+                هامش صافي الخسارة: {netRealMargin}% (<span className="text-rose-600 font-black">خسارة</span>)
+              </span>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -510,18 +516,47 @@ export const FinancesPage: React.FC<Props> = ({
               </span>
             </div>
 
-            {/* Real Net Profit */}
-            <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-4 rounded-xl shadow-xs">
-              <span className="text-xs font-bold text-emerald-100 block mb-1">
-                4. صافي ربح الورشة الفعلي
-              </span>
-              <div className="text-2xl sm:text-3xl font-black font-mono">
-                {maskValue(formatCurrency(netRealProfit, currency))}
+            {/* Real Net Profit / Loss */}
+            {netRealProfit >= 0 ? (
+              <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-4 rounded-xl shadow-xs border border-emerald-500">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold text-emerald-100">
+                    4. صافي ربح الورشة الفعلي
+                  </span>
+                  <span className="text-[11px] font-bold bg-emerald-500/40 text-white px-2 py-0.5 rounded-full border border-emerald-400/40">
+                    ربح
+                  </span>
+                </div>
+                <div className="text-2xl sm:text-3xl font-black font-mono">
+                  {maskValue(formatCurrency(netRealProfit, currency))}
+                </div>
+                <span className="text-[11px] text-emerald-100 mt-1 block font-medium">
+                  هامش صافي الربح الفعلي: +{netRealMargin}%
+                </span>
               </div>
-              <span className="text-[11px] text-emerald-100 mt-1 block font-medium">
-                هامش صافي الربح الفعلي: +{netRealMargin}%
-              </span>
-            </div>
+            ) : (
+              <div className="bg-rose-50/90 border-2 border-rose-300 p-4 rounded-xl shadow-xs text-slate-900">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold text-rose-900">
+                    4. صافي نتيجة الورشة الفعلي
+                  </span>
+                  <span className="text-xs font-black bg-white text-rose-600 border border-rose-300 px-2.5 py-0.5 rounded-lg shadow-2xs">
+                    خسارة
+                  </span>
+                </div>
+                <div className="text-2xl sm:text-3xl font-black font-mono text-rose-700">
+                  {maskValue(formatCurrency(netRealProfit, currency))}
+                </div>
+                <div className="flex items-center gap-1.5 mt-1 text-xs">
+                  <span className="font-black text-rose-600 bg-rose-100 px-2 py-0.5 rounded border border-rose-200">
+                    خسارة
+                  </span>
+                  <span className="text-[11px] text-rose-700 font-medium">
+                    نسبة صافي الخسارة: {netRealMargin}%
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Visual Profit Formula Step Banner */}
@@ -532,13 +567,21 @@ export const FinancesPage: React.FC<Props> = ({
               {' - '}
               <span className="font-bold text-rose-700">{formatCurrency(effectiveMaterialCost, currency)}</span> (مشتريات)
               {' = '}
-              <span className="font-bold text-emerald-700">{formatCurrency(grossProfit, currency)}</span> (مجمل ربح)
+              <span className={grossProfit >= 0 ? "font-bold text-emerald-700" : "font-bold text-rose-700"}>
+                {formatCurrency(grossProfit, currency)} {grossProfit >= 0 ? '(مجمل ربح)' : (<span className="text-rose-600 font-bold">(مجمل خسارة)</span>)}
+              </span>
               {' - '}
               <span className="font-bold text-amber-700">{formatCurrency(totalExpenses, currency)}</span> (مصاريف)
               {' = '}
-              <span className="font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded">
-                {formatCurrency(netRealProfit, currency)} (صافي الربح)
-              </span>
+              {netRealProfit >= 0 ? (
+                <span className="font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-lg">
+                  {formatCurrency(netRealProfit, currency)} (صافي الربح)
+                </span>
+              ) : (
+                <span className="font-bold text-rose-700 bg-rose-50 border border-rose-300 px-2.5 py-1 rounded-lg">
+                  {formatCurrency(netRealProfit, currency)} (<span className="text-rose-600 font-black">خسارة</span>)
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -654,15 +697,17 @@ export const FinancesPage: React.FC<Props> = ({
                         {maskValue(formatCurrency(stats.cost, currency))}
                       </span>
                     </div>
-                    <div className="flex justify-between text-emerald-800 pt-1.5 border-t border-slate-200/80 font-bold">
-                      <span>صافي الربح:</span>
+                    <div className={`flex justify-between pt-1.5 border-t border-slate-200/80 font-bold ${stats.profit >= 0 ? 'text-emerald-800' : 'text-rose-700'}`}>
+                      <span>{stats.profit >= 0 ? 'صافي الربح:' : 'النتيجة (خسارة):'}</span>
                       <span className="font-mono">
                         {maskValue(formatCurrency(stats.profit, currency))}
                       </span>
                     </div>
                     <div className="flex justify-between text-[11px] text-slate-500">
-                      <span>هامش الربح:</span>
-                      <span className="font-mono font-bold text-emerald-600">+{margin}%</span>
+                      <span>{stats.profit >= 0 ? 'هامش الربح:' : 'نسبة الخسارة:'}</span>
+                      <span className={`font-mono font-bold ${stats.profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {stats.profit >= 0 ? `+${margin}%` : `${margin}% (خسارة)`}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -890,10 +935,13 @@ export const FinancesPage: React.FC<Props> = ({
                       <td className="p-2.5 font-bold font-mono text-rose-600 bg-rose-50/30">
                         {maskValue(formatCurrency(order.totalCost, currency))}
                       </td>
-                      <td className="p-2.5 font-bold font-mono text-emerald-600 bg-emerald-50/30">
+                      <td className={`p-2.5 font-bold font-mono ${order.netProfit >= 0 ? 'text-emerald-600 bg-emerald-50/30' : 'text-rose-600 bg-rose-50/40'}`}>
+                        {order.netProfit < 0 && <span className="text-[10px] text-rose-600 font-bold ml-1">خسارة:</span>}
                         {maskValue(formatCurrency(order.netProfit, currency))}
                       </td>
-                      <td className="p-2.5 font-bold font-mono text-emerald-700">+{margin}%</td>
+                      <td className={`p-2.5 font-bold font-mono ${order.netProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                        {order.netProfit >= 0 ? `+${margin}%` : `${margin}% (خسارة)`}
+                      </td>
                       <td className="p-2.5">
                         <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700">
                           {order.status === 'completed'

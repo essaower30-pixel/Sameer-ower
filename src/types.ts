@@ -92,21 +92,9 @@ export interface WorkshopSettings {
 }
 
 export const SUPPORTED_CURRENCIES = [
-  { code: 'د.أ', name: 'دينار أردني (د.أ)' },
-  { code: 'ر.س', name: 'ريال سعودي (ر.س)' },
-  { code: 'ج.م', name: 'جنيه مصري (ج.م)' },
-  { code: 'د.إ', name: 'درهم إماراتي (د.إ)' },
-  { code: 'د.ك', name: 'دينار كويتي (د.ك)' },
-  { code: '₪', name: 'شيكل (₪)' },
-  { code: 'ر.ع', name: 'ريال عماني (ر.ع)' },
-  { code: 'ر.ق', name: 'ريال قطري (ر.ق)' },
-  { code: 'د.ب', name: 'دينار بحريني (د.ب)' },
-  { code: 'ل.ل', name: 'ليرة لبنانية (ل.ل)' },
-  { code: 'د.ت', name: 'دينار تونسي (د.ت)' },
-  { code: 'د.ج', name: 'دينار جزائري (د.ج)' },
-  { code: 'د.م', name: 'درهم مغربي (د.م)' },
   { code: '$', name: 'دولار أمريكي ($)' },
-  { code: '€', name: 'يورو (€)' },
+  { code: 'د.أ', name: 'دينار أردني (د.أ)' },
+  { code: 'ل.س', name: 'ليرة سورية (ل.س)' },
 ];
 
 export const CATEGORY_LABELS: Record<ProductCategory, { title: string; subtitle: string; icon: string }> = {

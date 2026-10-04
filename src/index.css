@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+html {
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+}
+
+body {
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 @layer utilities {
   /* Print styling for quotes and invoices */
   @media print {
