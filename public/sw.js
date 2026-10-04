@@ -1,22 +1,22 @@
-const CACHE_NAME = 'workshop-cache-v2';
+const CACHE_NAME = 'workshop-cache-v4';
 const PRECACHE_ASSETS = [
   '/',
-  '/index.html',
   '/manifest.webmanifest',
+  '/manifest.json',
   '/favicon.ico',
   '/icon.svg',
   '/pwa-192x192.png',
+  '/pwa-maskable-192x192.png',
   '/pwa-512x512.png',
   '/pwa-maskable-512x512.png',
   '/apple-touch-icon.png'
 ];
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_ASSETS).catch((err) => {
-        console.warn('Precache partial fail:', err);
+        console.debug('Precache info:', err);
       });
     })
   );
@@ -32,7 +32,7 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    }).then(() => self.clients.claim())
+    })
   );
 });
 
@@ -43,25 +43,28 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (!url.protocol.startsWith('http')) return;
 
-  event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-        return networkResponse;
-      })
-      .catch(async () => {
+  // For HTML navigation: Network-first to always stay updated and never loop
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(async () => {
         const cached = await caches.match(event.request);
-        if (cached) return cached;
-        if (event.request.mode === 'navigate') {
-          const fallback = await caches.match('/');
-          if (fallback) return fallback;
-        }
-        return new Response('Network error and no cache', { status: 503, statusText: 'Offline' });
+        return cached || (await caches.match('/'));
       })
+    );
+    return;
+  }
+
+  // For static assets: Cache-first with network fallback
+  event.respondWith(
+    caches.match(event.request).then((cached) => {
+      if (cached) return cached;
+      return fetch(event.request).then((res) => {
+        if (res && res.status === 200 && res.type === 'basic') {
+          const resClone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, resClone));
+        }
+        return res;
+      });
+    })
   );
 });
