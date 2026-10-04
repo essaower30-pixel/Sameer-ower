@@ -85,6 +85,7 @@ export interface WorkshopSettings {
   address: string;
   email?: string;
   logoUrl?: string;
+  appUrl?: string;
   currency: string;
   defaultUnit: MeasurementUnit; // 'cm' | 'm'
   invoiceNotes: string;
@@ -246,6 +247,7 @@ export const DEFAULT_SETTINGS: WorkshopSettings = {
   address: 'المنطقة الصناعية - الشارع الرئيسي',
   email: 'workshop@example.com',
   logoUrl: '',
+  appUrl: '',
   currency: 'د.أ',
   defaultUnit: 'cm',
   invoiceNotes: 'يشمل السعر التوريد والتركيب مع ضمان لمدة 5 سنوات على الألمنيوم وسنتين على المحركات والإكسسوارات.',

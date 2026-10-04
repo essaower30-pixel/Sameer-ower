@@ -20,6 +20,7 @@ import {
   Coins,
   Sparkles,
 } from 'lucide-react';
+import { AppQRCodeCard } from './AppQRCodeCard';
 
 interface Props {
   settings: WorkshopSettings;
@@ -322,6 +323,15 @@ export const SettingsModal: React.FC<Props> = ({
             </div>
           </div>
         </div>
+
+        {/* App URL & QR Code (Barcode) */}
+        <AppQRCodeCard
+          appUrl={formData.appUrl}
+          onUrlChange={(newUrl) => setFormData((prev) => ({ ...prev, appUrl: newUrl }))}
+          workshopName={formData.workshopName}
+          ownerName={formData.ownerName}
+          phone={formData.phone}
+        />
 
         {/* Default Pricing Catalog per Category */}
         <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">

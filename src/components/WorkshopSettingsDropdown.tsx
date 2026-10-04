@@ -36,6 +36,7 @@ import {
 } from '../types';
 import { backupAllToFirestore, loadAllFromFirestore } from '../utils/firestoreSync';
 import { PWAInstallButton } from './PWAInstallButton';
+import { AppQRCodeCard } from './AppQRCodeCard';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 interface Props {
@@ -542,6 +543,18 @@ export const WorkshopSettingsDropdown: React.FC<Props> = ({
                 </div>
               </div>
 
+              {/* App URL and QR Code / Barcode */}
+              <div className="pt-1">
+                <AppQRCodeCard
+                  appUrl={formData.appUrl}
+                  onUrlChange={(newUrl) => setFormData((prev) => ({ ...prev, appUrl: newUrl }))}
+                  workshopName={formData.workshopName}
+                  ownerName={formData.ownerName}
+                  phone={formData.phone}
+                  isCompact={true}
+                />
+              </div>
+
               {/* Save Button */}
               <button
                 type="submit"
@@ -687,6 +700,17 @@ export const WorkshopSettingsDropdown: React.FC<Props> = ({
 
               <div>
                 <PWAInstallButton />
+              </div>
+
+              <div className="pt-2">
+                <AppQRCodeCard
+                  appUrl={formData.appUrl}
+                  onUrlChange={(newUrl) => setFormData((prev) => ({ ...prev, appUrl: newUrl }))}
+                  workshopName={formData.workshopName}
+                  ownerName={formData.ownerName}
+                  phone={formData.phone}
+                  isCompact={true}
+                />
               </div>
             </div>
           )}
