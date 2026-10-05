@@ -19,6 +19,7 @@ import { FinancesPage } from './components/FinancesPage';
 import { SuppliersPage } from './components/SuppliersPage';
 import { PurchaseInvoiceModal } from './components/PurchaseInvoiceModal';
 import { PurchaseInvoiceViewModal } from './components/PurchaseInvoiceViewModal';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { testFirestoreConnection } from './firebase';
 import {
   Search,
@@ -529,6 +530,9 @@ export default function App() {
           onClose={() => setViewingPurchaseInvoice(null)}
         />
       )}
+
+      {/* Connectivity & Offline Status Toast */}
+      <OfflineIndicator />
     </div>
   );
 }
