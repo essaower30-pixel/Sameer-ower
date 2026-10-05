@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Wrench,
   Coins,
   Wallet,
   Users,
   Truck,
+  QrCode,
+  X,
 } from 'lucide-react';
 import {
   WorkshopSettings,
@@ -16,6 +18,7 @@ import {
 } from '../types';
 import { WorkshopSettingsDropdown } from './WorkshopSettingsDropdown';
 import { PWAInstallButton } from './PWAInstallButton';
+import { AppQRCodeCard } from './AppQRCodeCard';
 
 export type ActiveNavTab = 'orders' | 'suppliers' | 'finances' | 'calculator';
 
@@ -55,6 +58,8 @@ export const Navbar: React.FC<Props> = ({
   onCurrencyChange,
   onDefaultUnitChange,
 }) => {
+  const [showQRModal, setShowQRModal] = useState(false);
+
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs no-print w-full">
       <div className="max-w-7xl mx-auto px-1.5 sm:px-4 lg:px-8">
@@ -170,6 +175,17 @@ export const Navbar: React.FC<Props> = ({
 
           {/* 3. Left Side: Action Buttons & Currency/Unit Toggles */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            {/* Quick App QR Code & Barcode Button */}
+            <button
+              type="button"
+              onClick={() => setShowQRModal(true)}
+              className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition border border-indigo-200/80 shadow-2xs cursor-pointer active:scale-95"
+              title="رابط وباركود التطبيق للمحل (QR Code)"
+            >
+              <QrCode className="w-3.5 h-3.5 text-indigo-600" />
+              <span className="hidden sm:inline">الباركود</span>
+            </button>
+
             {/* PWA Install Button (أوفلاين) */}
             <PWAInstallButton />
 
@@ -251,6 +267,30 @@ export const Navbar: React.FC<Props> = ({
           )}
         </div>
       </div>
+
+      {/* Quick App QR Code / Barcode Modal */}
+      {showQRModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="relative w-full max-w-2xl max-h-[92dvh] overflow-y-auto bg-slate-900 rounded-2xl shadow-2xl border border-slate-700 p-1">
+            <button
+              type="button"
+              onClick={() => setShowQRModal(false)}
+              className="absolute top-4 left-4 p-2 text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition cursor-pointer z-10 shadow-md border border-slate-700"
+              title="إغلاق"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <AppQRCodeCard
+              appUrl={settings.appUrl}
+              onUrlChange={(newUrl) => onSaveSettings({ ...settings, appUrl: newUrl })}
+              workshopName={settings.workshopName}
+              ownerName={settings.ownerName}
+              phone={settings.phone}
+              isCompact={false}
+            />
+          </div>
+        </div>
+      )}
     </header>
   );
 };

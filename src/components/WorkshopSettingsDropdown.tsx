@@ -25,6 +25,7 @@ import {
   ExternalLink,
   ShieldCheck,
   Smartphone,
+  QrCode,
 } from 'lucide-react';
 import {
   WorkshopSettings,
@@ -55,7 +56,7 @@ interface Props {
   }) => void;
 }
 
-type SettingsTab = 'profile' | 'cloud_firebase' | 'drive' | 'offline_pwa' | 'github';
+type SettingsTab = 'profile' | 'app_qr' | 'cloud_firebase' | 'drive' | 'offline_pwa' | 'github';
 
 export const WorkshopSettingsDropdown: React.FC<Props> = ({
   settings,
@@ -385,11 +386,11 @@ export const WorkshopSettingsDropdown: React.FC<Props> = ({
           </div>
 
           {/* Navigation Sub-Tabs */}
-          <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100 rounded-xl mb-4 text-[11px] font-bold">
+          <div className="grid grid-cols-5 gap-1 p-1 bg-slate-100 rounded-xl mb-4 text-[10px] sm:text-[11px] font-bold">
             <button
               type="button"
               onClick={() => setActiveTab('profile')}
-              className={`py-1.5 px-1 rounded-lg transition-all text-center cursor-pointer ${
+              className={`py-1.5 px-0.5 rounded-lg transition-all text-center cursor-pointer ${
                 activeTab === 'profile'
                   ? 'bg-white text-blue-700 shadow-2xs font-black'
                   : 'text-slate-600 hover:text-slate-900'
@@ -399,8 +400,21 @@ export const WorkshopSettingsDropdown: React.FC<Props> = ({
             </button>
             <button
               type="button"
+              onClick={() => setActiveTab('app_qr')}
+              className={`py-1.5 px-0.5 rounded-lg transition-all text-center cursor-pointer flex items-center justify-center gap-1 ${
+                activeTab === 'app_qr'
+                  ? 'bg-white text-indigo-700 shadow-2xs font-black ring-1 ring-indigo-300'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="رابط وباركود التطبيق للمحل"
+            >
+              <QrCode className="w-3 h-3 text-indigo-600" />
+              <span>الباركود</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveTab('cloud_firebase')}
-              className={`py-1.5 px-1 rounded-lg transition-all text-center cursor-pointer ${
+              className={`py-1.5 px-0.5 rounded-lg transition-all text-center cursor-pointer ${
                 activeTab === 'cloud_firebase'
                   ? 'bg-white text-amber-700 shadow-2xs font-black'
                   : 'text-slate-600 hover:text-slate-900'
@@ -411,7 +425,7 @@ export const WorkshopSettingsDropdown: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => setActiveTab('drive')}
-              className={`py-1.5 px-1 rounded-lg transition-all text-center cursor-pointer ${
+              className={`py-1.5 px-0.5 rounded-lg transition-all text-center cursor-pointer ${
                 activeTab === 'drive'
                   ? 'bg-white text-emerald-700 shadow-2xs font-black'
                   : 'text-slate-600 hover:text-slate-900'
@@ -422,7 +436,7 @@ export const WorkshopSettingsDropdown: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => setActiveTab('offline_pwa')}
-              className={`py-1.5 px-1 rounded-lg transition-all text-center cursor-pointer ${
+              className={`py-1.5 px-0.5 rounded-lg transition-all text-center cursor-pointer ${
                 activeTab === 'offline_pwa'
                   ? 'bg-white text-purple-700 shadow-2xs font-black'
                   : 'text-slate-600 hover:text-slate-900'
@@ -435,6 +449,25 @@ export const WorkshopSettingsDropdown: React.FC<Props> = ({
           {/* TAB 1: Shop Profile Settings */}
           {activeTab === 'profile' && (
             <form onSubmit={handleSave} className="space-y-3.5">
+              {/* Highlight Barcode Banner in Shop Profile */}
+              <div className="p-3 bg-gradient-to-r from-blue-50 via-indigo-50 to-slate-50 border border-blue-200 rounded-xl flex items-center justify-between gap-2 shadow-2xs">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <QrCode className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-bold text-blue-950 truncate">رابط وباركود التطبيق للمحل (QR)</h4>
+                    <p className="text-[10px] text-blue-700 truncate">امسح الباركود لفتح التطبيق على آيفون وأندرويد</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('app_qr')}
+                  className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition shadow-xs cursor-pointer shrink-0"
+                >
+                  فتح الباركود 📲
+                </button>
+              </div>
               {/* Workshop Logo */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -564,6 +597,23 @@ export const WorkshopSettingsDropdown: React.FC<Props> = ({
                 <span>{isSavedNotice ? 'تم حفظ التعديلات بنجاح!' : 'حفظ بيانات المحل'}</span>
               </button>
             </form>
+          )}
+
+          {/* TAB 2: App QR Code and Barcode */}
+          {activeTab === 'app_qr' && (
+            <div className="space-y-3">
+              <AppQRCodeCard
+                appUrl={formData.appUrl}
+                onUrlChange={(newUrl) => {
+                  setFormData((prev) => ({ ...prev, appUrl: newUrl }));
+                  onSaveSettings({ ...formData, appUrl: newUrl });
+                }}
+                workshopName={formData.workshopName}
+                ownerName={formData.ownerName}
+                phone={formData.phone}
+                isCompact={false}
+              />
+            </div>
           )}
 
           {/* TAB 2: Firebase Cloud Sync */}

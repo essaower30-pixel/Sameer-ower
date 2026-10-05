@@ -12,6 +12,11 @@ import {
   Sparkles,
   RotateCcw,
   MessageCircle,
+  HelpCircle,
+  Apple,
+  Info,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 interface Props {
@@ -36,13 +41,14 @@ export const AppQRCodeCard: React.FC<Props> = ({
     if (typeof window !== 'undefined' && window.location) {
       return window.location.origin;
     }
-    return 'https://ais-pre-vcjap6okc2rntse3oeifvb-105836077369.europe-west2.run.app';
+    return '';
   });
 
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copied, setCopied] = useState<boolean>(false);
   const [isEditingUrl, setIsEditingUrl] = useState<boolean>(false);
   const [inputUrl, setInputUrl] = useState<string>(currentUrl);
+  const [activeGuideTab, setActiveGuideTab] = useState<'iphone' | 'android' | null>('iphone');
   const printRef = useRef<HTMLDivElement>(null);
 
   // Sync when prop changes
@@ -62,7 +68,7 @@ export const AppQRCodeCard: React.FC<Props> = ({
     if (!currentUrl) return;
 
     QRCode.toDataURL(currentUrl, {
-      width: 400,
+      width: 450,
       margin: 2,
       color: {
         dark: '#0f172a',
@@ -84,7 +90,6 @@ export const AppQRCodeCard: React.FC<Props> = ({
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      // Fallback
       const textArea = document.createElement('textarea');
       textArea.value = currentUrl;
       document.body.appendChild(textArea);
@@ -133,7 +138,7 @@ export const AppQRCodeCard: React.FC<Props> = ({
 
   const handleShareWhatsApp = () => {
     const text = encodeURIComponent(
-      `رابط نظام ${workshopName}:\n${currentUrl}\nيمكنك فتح الرابط وتثبيت التطبيق مباشرة على شاشة هاتفك.`
+      `رابط نظام ${workshopName}:\n${currentUrl}\nيمكنك فتح الرابط وتثبيت التطبيق مباشرة على شاشة هاتفك (آيفون وأندرويد).`
     );
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
@@ -165,7 +170,7 @@ export const AppQRCodeCard: React.FC<Props> = ({
               padding: 32px;
               text-align: center;
               background: white;
-              max-width: 380px;
+              max-width: 400px;
               width: 100%;
               box-shadow: 0 10px 25px rgba(0,0,0,0.1);
             }
@@ -185,11 +190,11 @@ export const AppQRCodeCard: React.FC<Props> = ({
               padding: 16px;
               border-radius: 16px;
               display: inline-block;
-              margin-bottom: 20px;
+              margin-bottom: 16px;
             }
             .qr-img {
-              width: 220px;
-              height: 220px;
+              width: 240px;
+              height: 240px;
               display: block;
             }
             .scan-hint {
@@ -198,18 +203,28 @@ export const AppQRCodeCard: React.FC<Props> = ({
               color: #2563eb;
               margin-bottom: 8px;
             }
-            .url {
+            .instructions {
               font-size: 11px;
               color: #475569;
+              line-height: 1.6;
+              margin-bottom: 12px;
+              text-align: right;
+              background: #f8fafc;
+              padding: 10px 14px;
+              border-radius: 10px;
+            }
+            .url {
+              font-size: 11px;
+              color: #334155;
               word-break: break-all;
               font-family: monospace;
               direction: ltr;
               display: block;
-              margin-top: 4px;
+              margin-top: 6px;
             }
             .footer {
-              margin-top: 20px;
-              padding-top: 14px;
+              margin-top: 18px;
+              padding-top: 12px;
               border-top: 1px dashed #cbd5e1;
               font-size: 12px;
               color: #334155;
@@ -228,6 +243,10 @@ export const AppQRCodeCard: React.FC<Props> = ({
               <img class="qr-img" src="${qrDataUrl}" alt="QR Code" />
             </div>
             <div class="scan-hint">امسح الباركود بكاميرا هاتفك لفتح التطبيق وتثبيته</div>
+            <div class="instructions">
+              &bull; <strong>آيفون (Safari):</strong> اضغط زر المشاركة ثم «إضافة إلى الشاشة الرئيسية».<br>
+              &bull; <strong>أندرويد (Chrome):</strong> اضغط زر «تثبيت التطبيق» أو القائمة (⋮) ثم «تثبيت».
+            </div>
             <span class="url">${currentUrl}</span>
             ${
               phone || ownerName
@@ -254,7 +273,7 @@ export const AppQRCodeCard: React.FC<Props> = ({
       {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-700/60 pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-blue-400">
+          <div className="w-10 h-10 rounded-xl bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-blue-400 shrink-0">
             <QrCode className="w-5 h-5" />
           </div>
           <div>
@@ -263,7 +282,7 @@ export const AppQRCodeCard: React.FC<Props> = ({
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             </h3>
             <p className="text-[11px] text-slate-300">
-              امسح الباركود بكاميرا الهاتف لفتح التطبيق وتثبيته مباشرة أو مشاركته مع المعلمين والزبائن
+              امسح الباركود بكاميرا الهاتف لفتح التطبيق وتثبيته فوراً على الشاشة
             </p>
           </div>
         </div>
@@ -429,6 +448,95 @@ export const AppQRCodeCard: React.FC<Props> = ({
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Device Help & Troubleshooting Guides (iPhone & Android) */}
+      <div className="pt-2 border-t border-slate-700/60">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
+            <HelpCircle className="w-3.5 h-3.5" />
+            <span>إرشادات التشغيل والتثبيت على الهواتف:</span>
+          </div>
+
+          <div className="flex items-center gap-1 bg-slate-800 p-0.5 rounded-lg border border-slate-700">
+            <button
+              type="button"
+              onClick={() => setActiveGuideTab(activeGuideTab === 'iphone' ? null : 'iphone')}
+              className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-bold transition ${
+                activeGuideTab === 'iphone'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <Apple className="w-3 h-3" />
+              <span>هواتف آيفون (iPhone)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveGuideTab(activeGuideTab === 'android' ? null : 'android')}
+              className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-bold transition ${
+                activeGuideTab === 'android'
+                  ? 'bg-emerald-600 text-white'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <Smartphone className="w-3 h-3" />
+              <span>هواتف أندرويد (Android)</span>
+            </button>
+          </div>
+        </div>
+
+        {/* iPhone Guide */}
+        {activeGuideTab === 'iphone' && (
+          <div className="bg-slate-800/90 border border-blue-500/30 rounded-xl p-3 text-xs space-y-2 text-slate-200 animate-in fade-in duration-150">
+            <div className="font-bold text-blue-300 flex items-center gap-1.5">
+              <Apple className="w-4 h-4 text-white" />
+              <span>خطوات فتح وتثبيت التطبيق على أجهزة آيفون (iOS Safari):</span>
+            </div>
+            <ol className="list-decimal list-inside space-y-1.5 text-[11px] text-slate-300 pr-1 leading-relaxed">
+              <li>
+                تأكد من فتح الرابط عبر متصفح <strong>سفاري (Safari)</strong> الأصلي على الآيفون.
+              </li>
+              <li>
+                إذا ظهرت رسالة إذن ملفات الارتباط (Cookie Check): اضغط <strong>«Allow»</strong> أو <strong>«السماح»</strong> لمرة واحدة لفتح النظام.
+              </li>
+              <li>
+                اضغط على زر <strong>المشاركة</strong> (مربع به سهم للأعلى ⬆️) في شريط سفاري بالأسفل.
+              </li>
+              <li>
+                مرر لأسفل واختر <strong>«إضافة إلى الشاشة الرئيسية» (Add to Home Screen)</strong>.
+              </li>
+              <li>
+                اضغط <strong>«إضافة» (Add)</strong>، وسيظهر التطبيق فوراً على شاشة هاتفك كأيقونة تطبيق كاملة بدون شريط المتصفح!
+              </li>
+            </ol>
+          </div>
+        )}
+
+        {/* Android Guide */}
+        {activeGuideTab === 'android' && (
+          <div className="bg-slate-800/90 border border-emerald-500/30 rounded-xl p-3 text-xs space-y-2 text-slate-200 animate-in fade-in duration-150">
+            <div className="font-bold text-emerald-300 flex items-center gap-1.5">
+              <Smartphone className="w-4 h-4 text-emerald-400" />
+              <span>حل مشكلة أندرويد وتثبيت التطبيق (Android Chrome):</span>
+            </div>
+            <ol className="list-decimal list-inside space-y-1.5 text-[11px] text-slate-300 pr-1 leading-relaxed">
+              <li>
+                تم الآن تحديث ميزة العمل بدون إنترنت (Service Worker) بحيث يحفظ التطبيق بالكامل في ذاكرة الهاتف، لتشغيله مباشرة دون ظهور صفحة التحقق.
+              </li>
+              <li>
+                اضغط زر <strong>«تثبيت التطبيق»</strong> الأخضر في الشريط العلوي لتثبيته مباشرة.
+              </li>
+              <li>
+                إذا لم تظهر النافذة التلقائية: اضغط على الثلاث نقاط <strong>(⋮)</strong> في أعلى يسار متصفح Chrome، ثم اختر <strong>«تثبيت التطبيق»</strong> أو <strong>«إضافة إلى الشاشة الرئيسية»</strong>.
+              </li>
+              <li>
+                سيفتح التطبيق المثبت على شاشة هاتفك الرئيسية بسرعة فائقة ويعمل حتى بدون اتصال إنترنت.
+              </li>
+            </ol>
+          </div>
+        )}
       </div>
     </div>
   );
