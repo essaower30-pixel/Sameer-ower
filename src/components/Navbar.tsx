@@ -179,11 +179,11 @@ export const Navbar: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => setShowQRModal(true)}
-              className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition border border-indigo-200/80 shadow-2xs cursor-pointer active:scale-95"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-[11px] sm:text-xs font-bold transition border border-indigo-200/80 shadow-2xs cursor-pointer active:scale-95"
               title="رابط وباركود التطبيق للمحل (QR Code)"
             >
               <QrCode className="w-3.5 h-3.5 text-indigo-600" />
-              <span className="hidden sm:inline">الباركود</span>
+              <span>الباركود</span>
             </button>
 
             {/* PWA Install Button (أوفلاين) */}
