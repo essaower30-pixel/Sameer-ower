@@ -1,4 +1,4 @@
-const CACHE_NAME = 'workshop-cache-v6';
+const CACHE_NAME = 'workshop-cache-v7';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.webmanifest',
@@ -29,15 +29,33 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
+            console.log('Cleaning old cache:', key);
             return caches.delete(key);
           }
         })
       );
-    }).then(() => self.clients.claim())
+    }).then(() => {
+      return self.clients.claim();
+    }).then(() => {
+      // Notify all open client windows that a new version is active
+      return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+        clients.forEach((client) => client.postMessage({ type: 'SW_UPDATED', version: CACHE_NAME }));
+      });
+    })
   );
 });
 
-// Fetch event listener: Offline-first & auth-resilient navigation
+// Allow clients to trigger skipWaiting directly
+self.addEventListener('message', (event) => {
+  if (event.data && (event.data.type === 'SKIP_WAITING' || event.data.type === 'CLEAR_CACHE')) {
+    self.skipWaiting();
+    if (event.data.type === 'CLEAR_CACHE') {
+      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))));
+    }
+  }
+});
+
+// Fetch event listener: Network-first for navigation, cache-first for static assets
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
@@ -52,14 +70,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For HTML navigation (e.g. launching installed app or opening links):
+  // For HTML navigation: Network-first with instant fallback to cache
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
         .then(async (response) => {
-          // If server responded with redirect to cookie_check / auth or server error
-          // (common on external devices or standalone WebAPK when not logged in to AI Studio),
-          // fallback to the cached app shell so the app opens immediately!
+          // If response redirects to cookie_check or auth failure (common on external devices),
+          // fallback to cached app shell so the app opens immediately!
           if (
             !response ||
             response.status >= 400 ||
@@ -71,7 +88,6 @@ self.addEventListener('fetch', (event) => {
             if (cached) return cached;
           }
 
-          // Otherwise update cached app shell with clean response
           if (response && response.status === 200) {
             const copy = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
@@ -79,7 +95,6 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(async () => {
-          // Offline fallback
           const cached = (await caches.match(event.request)) || (await caches.match('/'));
           if (cached) return cached;
           return new Response('تطبيق ورشة الألمنيوم أوفلاين', {
@@ -92,14 +107,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For static assets (scripts, styles, icons, fonts): Cache-first with network fallback
+  // For static assets: Cache-first with network fallback
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
 
       return fetch(event.request)
         .then((res) => {
-          // Cache successful responses for subsequent offline/standalone launches
           if (res && res.status === 200) {
             const resClone = res.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, resClone));

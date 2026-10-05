@@ -776,6 +776,30 @@ export const WorkshopSettingsDropdown: React.FC<Props> = ({
               <span>نسخة JSON للجهاز</span>
             </button>
 
+            {/* Quick Cache Clear & Reload Button */}
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  if ('caches' in window) {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map((k) => caches.delete(k)));
+                  }
+                  if ('serviceWorker' in navigator) {
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    await Promise.all(regs.map((r) => r.unregister()));
+                  }
+                } finally {
+                  window.location.reload();
+                }
+              }}
+              className="hover:text-blue-600 flex items-center gap-1 text-blue-600 font-bold cursor-pointer bg-blue-50 px-2 py-0.5 rounded-md"
+              title="تحديث التطبيق ومسح الذاكرة المؤقتة"
+            >
+              <RefreshCw className="w-3 h-3 text-blue-600" />
+              <span>تحديث النسخة 🔄</span>
+            </button>
+
             <button
               type="button"
               onClick={() => {

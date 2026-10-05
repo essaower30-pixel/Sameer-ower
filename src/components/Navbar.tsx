@@ -243,7 +243,7 @@ export const Navbar: React.FC<Props> = ({
       </div>
 
       {/* Slim Shop Identity Sub-bar for Mobile (< lg) so branding is visible without crowding top row */}
-      <div className="lg:hidden flex items-center justify-between px-3 py-1 bg-slate-50 border-t border-slate-100 text-[11px] text-slate-600 font-medium">
+      <div className="lg:hidden flex items-center justify-between px-3 py-1 bg-slate-50 border-t border-slate-100 text-[11px] text-slate-600 font-medium gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
           {settings.logoUrl ? (
             <img src={settings.logoUrl} alt="" className="w-4 h-4 object-contain rounded shrink-0" />
@@ -252,7 +252,19 @@ export const Navbar: React.FC<Props> = ({
           )}
           <span className="font-bold text-slate-800 truncate">{settings.workshopName}</span>
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* Direct QR Barcode Button for Mobile */}
+        <button
+          type="button"
+          onClick={() => setShowQRModal(true)}
+          className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-[10px] font-bold shadow-2xs active:scale-95 transition cursor-pointer shrink-0"
+          title="عرض رابط وباركود التطبيق للمحل"
+        >
+          <QrCode className="w-3 h-3" />
+          <span>الباركود 📲</span>
+        </button>
+
+        <div className="flex items-center gap-2 shrink-0">
           <span className="text-[10px] text-slate-400">
             {activeTab === 'orders'
               ? 'سجل فواتير البيع'

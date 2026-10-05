@@ -19,6 +19,9 @@ export default defineConfig(() => {
               if (fs.existsSync(swPath)) {
                 res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
                 res.setHeader('Service-Worker-Allowed', '/');
+                res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+                res.setHeader('Pragma', 'no-cache');
+                res.setHeader('Expires', '0');
                 return fs.createReadStream(swPath).pipe(res);
               }
             }
@@ -26,6 +29,8 @@ export default defineConfig(() => {
               const mPath = path.resolve(__dirname, 'public/manifest.webmanifest');
               if (fs.existsSync(mPath)) {
                 res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+                res.setHeader('Access-Control-Allow-Origin', '*');
+                res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
                 return fs.createReadStream(mPath).pipe(res);
               }
             }
