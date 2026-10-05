@@ -1,7 +1,6 @@
-const CACHE_NAME = 'workshop-cache-v8';
-const CORE_ASSETS = [
+const CACHE_NAME = 'workshop-cache-v9';
+const PRECACHE_ASSETS = [
   '/',
-  '/index.html',
   '/manifest.webmanifest',
   '/manifest.json',
   '/favicon.ico',
@@ -10,70 +9,23 @@ const CORE_ASSETS = [
   '/pwa-maskable-192x192.png',
   '/pwa-512x512.png',
   '/pwa-maskable-512x512.png',
-  '/apple-touch-icon.png',
-  '/src/main.tsx',
-  '/src/App.tsx',
-  '/src/index.css'
+  '/apple-touch-icon.png'
 ];
 
-// Helper: safe cache put
-async function safeCachePut(cacheName, request, response) {
-  try {
-    if (!response || (response.status !== 200 && response.type !== 'opaque')) {
-      return;
-    }
-    const cache = await caches.open(cacheName);
-    await cache.put(request, response.clone());
-  } catch (err) {
-    // Ignore cache put errors for cross-origin or unsupported schemes
-  }
-}
-
-// Helper: match across all caches with search param tolerance
-async function matchAnywhere(request) {
-  // 1. Exact match in current cache
-  let res = await caches.match(request);
-  if (res) return res;
-
-  // 2. Ignore search params match (e.g. Vite ?v=... or ?t=...)
-  res = await caches.match(request, { ignoreSearch: true });
-  if (res) return res;
-
-  // 3. Match across any other active cache
-  const cacheNames = await caches.keys();
-  for (const name of cacheNames) {
-    const cache = await caches.open(name);
-    const found = (await cache.match(request)) || (await cache.match(request, { ignoreSearch: true }));
-    if (found) return found;
-  }
-
-  // 4. Try matching URL pathname alone
-  try {
-    const url = new URL(request.url || request, location.origin);
-    res = await caches.match(url.pathname);
-    if (res) return res;
-  } catch {
-    // ignore URL parsing error
-  }
-
-  return null;
-}
-
-// 1. Install event: Precache core shell assets
+// 1. Install event: Precache static shell assets
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
-      // Precache each item individually so a single missing file doesn't fail the whole install
       await Promise.allSettled(
-        CORE_ASSETS.map(async (url) => {
+        PRECACHE_ASSETS.map(async (assetUrl) => {
           try {
-            const response = await fetch(url, { cache: 'reload' });
-            if (response.ok) {
-              await cache.put(url, response);
+            const res = await fetch(assetUrl, { cache: 'reload' });
+            if (res.ok) {
+              await cache.put(assetUrl, res);
             }
           } catch {
-            // Silently continue if individual dev asset isn't present
+            // Silently continue if single file isn't found
           }
         })
       );
@@ -81,11 +33,10 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// 2. Activate event: Claim clients immediately and clean older caches safely
+// 2. Activate event: Clean older caches and take control
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
-      // Only delete outdated versions if we are online or have confirmed the new cache
       try {
         const keys = await caches.keys();
         await Promise.all(
@@ -96,121 +47,87 @@ self.addEventListener('activate', (event) => {
           })
         );
       } catch (err) {
-        console.debug('Cache cleanup notice:', err);
+        console.debug('Cache prune error:', err);
       }
       await self.clients.claim();
     })()
   );
 });
 
-// 3. Message event: Handle caching requests and skip waiting
+// 3. Message event: Support manual cache actions
 self.addEventListener('message', (event) => {
   if (!event.data) return;
-
   if (event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
-
-  // Proactive caching of all live page assets sent from main.tsx
-  if (event.data.type === 'CACHE_PAGE_RESOURCES' && Array.isArray(event.data.urls)) {
-    event.waitUntil(
-      (async () => {
-        const cache = await caches.open(CACHE_NAME);
-        await Promise.allSettled(
-          event.data.urls.map(async (url) => {
-            try {
-              if (typeof url !== 'string' || !url.startsWith('http')) return;
-              const u = new URL(url);
-              // Skip auth bridge and dev control plane
-              if (u.pathname.includes('cookie_check') || u.pathname.includes('applet-auth') || u.search.includes('__aistudio')) {
-                return;
-              }
-              const existing = await cache.match(url);
-              if (!existing) {
-                const response = await fetch(url, { mode: 'cors', credentials: 'omit' }).catch(() => null);
-                if (response && (response.ok || response.type === 'opaque')) {
-                  await cache.put(url, response);
-                }
-              }
-            } catch {
-              // Ignore individual asset cache failure
-            }
-          })
-        );
-      })()
-    );
-  }
-
   if (event.data.type === 'CLEAR_CACHE') {
     caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))));
   }
 });
 
-// 4. Fetch event: Stale-While-Revalidate and offline resilience
+// 4. Fetch event: Reliable navigation and safe caching
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
   if (!url.protocol.startsWith('http')) return;
 
-  // Never intercept control plane or internal OAuth bridge
-  if (url.search.includes('__aistudio') || url.pathname.includes('applet-auth-bridge')) {
+  // NEVER intercept Vite internal dev bundles, auth bridges or control plane
+  if (
+    url.pathname.startsWith('/@') ||
+    url.pathname.includes('cookie_check') ||
+    url.pathname.includes('applet-auth') ||
+    url.search.includes('__aistudio')
+  ) {
     return;
   }
 
-  // HTML Navigation Handling (Opening the app, refreshing, home screen launcher)
+  // HTML Page Navigation Handling (Opening the app, refreshing, home screen launcher)
   if (event.request.mode === 'navigate') {
     event.respondWith(
       (async () => {
-        // Fast path: if completely offline according to navigator, return cached shell instantly
+        // If offline according to navigator, immediately use cached shell
         if (!navigator.onLine) {
-          const offlineCached = (await matchAnywhere(event.request)) || (await matchAnywhere('/')) || (await matchAnywhere('/index.html'));
-          if (offlineCached) return offlineCached;
+          const cached = (await caches.match(event.request)) || (await caches.match('/'));
+          if (cached) return cached;
         }
 
         try {
-          // Attempt network fetch with a 2.5s timeout to prevent hanging on slow or captive portals
           const fetchPromise = fetch(event.request);
           const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Network timeout')), 2500)
+            setTimeout(() => reject(new Error('Network timeout')), 3000)
           );
 
           const response = await Promise.race([fetchPromise, timeoutPromise]);
 
-          // Detect AI Studio cookie-check redirects or auth errors on external mobile devices
+          // If redirected to cookie check or auth bridge on external mobile devices, fallback to cached HTML
           if (
             !response ||
             response.status >= 400 ||
             response.url.includes('cookie_check') ||
-            response.url.includes('applet-auth') ||
-            response.url.includes('__aistudio')
+            response.url.includes('applet-auth')
           ) {
-            const cachedShell = (await matchAnywhere(event.request)) || (await matchAnywhere('/')) || (await matchAnywhere('/index.html'));
-            if (cachedShell) return cachedShell;
+            const cached = (await caches.match(event.request)) || (await caches.match('/'));
+            if (cached) return cached;
           }
 
           if (response && response.status === 200) {
-            safeCachePut(CACHE_NAME, event.request, response);
-            safeCachePut(CACHE_NAME, '/', response);
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
           }
           return response;
-        } catch (fetchErr) {
-          // Network failed or offline: ALWAYS fallback to the cached app shell
-          const cached =
-            (await matchAnywhere(event.request)) ||
-            (await matchAnywhere('/')) ||
-            (await matchAnywhere('/index.html'));
-
+        } catch {
+          // Fallback to cache on network failure or offline
+          const cached = (await caches.match(event.request)) || (await caches.match('/'));
           if (cached) return cached;
 
-          // Ultimate offline fallback HTML
           return new Response(
             `<!DOCTYPE html>
             <html lang="ar" dir="rtl">
             <head>
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width, initial-scale=1">
-              <title>ورشة الألمنيوم - أوفلاين</title>
+              <title>ورشة الألمنيوم</title>
               <style>
                 body { font-family: system-ui, sans-serif; text-align: center; padding: 40px 20px; background: #0f172a; color: white; }
                 .card { background: #1e293b; max-width: 420px; margin: auto; padding: 24px; border-radius: 16px; border: 1px solid #334155; }
@@ -219,9 +136,9 @@ self.addEventListener('fetch', (event) => {
             </head>
             <body>
               <div class="card">
-                <h2>ورشة الألمنيوم والديكور</h2>
-                <p>أنت حالياً في وضع عدم الاتصال (أوفلاين). يرجى فتح التطبيق مرة واحدة أثناء الاتصال بالإنترنت ليتم تحميل كل الواجهات تلقائياً.</p>
-                <button onclick="window.location.reload()">إعادة المحاولة 🔄</button>
+                <h2>نظام ورشة الألمنيوم والديكور</h2>
+                <p>يرجى فتح التطبيق مرة واحدة أثناء الاتصال بالإنترنت ليتم حفظ الشاشات بالكامل.</p>
+                <button onclick="window.location.reload()">تحديث الصفحة 🔄</button>
               </div>
             </body>
             </html>`,
@@ -236,51 +153,29 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static Assets (Scripts, Styles, Fonts, Images)
+  // Static Assets (Scripts, CSS, Fonts, Images)
   event.respondWith(
     (async () => {
-      // 1. Check if asset is already cached
-      const cachedResponse = await matchAnywhere(event.request);
-      if (cachedResponse) {
-        // Stale-while-revalidate in background if online
-        if (navigator.onLine) {
-          fetch(event.request)
-            .then((freshRes) => {
-              if (freshRes && (freshRes.status === 200 || freshRes.type === 'opaque')) {
-                safeCachePut(CACHE_NAME, event.request, freshRes);
-              }
-            })
-            .catch(() => {});
-        }
-        return cachedResponse;
-      }
+      // 1. Check exact cache match
+      const cached = await caches.match(event.request);
+      if (cached) return cached;
 
-      // 2. If not cached, fetch from network
+      // 2. Fetch from network
       try {
-        const networkResponse = await fetch(event.request);
-        if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
-          safeCachePut(CACHE_NAME, event.request, networkResponse);
+        const response = await fetch(event.request);
+        if (
+          response &&
+          (response.status === 200 || response.type === 'opaque') &&
+          !response.url.includes('cookie_check')
+        ) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
         }
-        return networkResponse;
-      } catch (err) {
-        // 3. Network failed: Offline fallback
-        const fallback = await matchAnywhere(event.request);
+        return response;
+      } catch {
+        // 3. Fallback to cache without search query params
+        const fallback = await caches.match(event.request, { ignoreSearch: true });
         if (fallback) return fallback;
-
-        // Fallbacks by content type to avoid script errors
-        const pathname = url.pathname.toLowerCase();
-        if (pathname.endsWith('.css')) {
-          return new Response('/* offline fallback css */', {
-            status: 200,
-            headers: { 'Content-Type': 'text/css; charset=utf-8' }
-          });
-        }
-        if (pathname.endsWith('.js') || pathname.endsWith('.tsx') || pathname.endsWith('.ts')) {
-          return new Response('export default {};', {
-            status: 200,
-            headers: { 'Content-Type': 'application/javascript; charset=utf-8' }
-          });
-        }
 
         return new Response('', { status: 504, statusText: 'Offline Resource Unavailable' });
       }

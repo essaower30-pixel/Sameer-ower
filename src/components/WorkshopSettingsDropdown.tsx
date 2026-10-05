@@ -92,7 +92,7 @@ export const WorkshopSettingsDropdown: React.FC<Props> = ({
     setOfflineCacheMessage(null);
     try {
       if ('caches' in window) {
-        const cache = await caches.open('workshop-cache-v8');
+        const cache = await caches.open('workshop-cache-v9');
         const coreUrls = [
           '/',
           '/index.html',
