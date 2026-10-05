@@ -4,16 +4,57 @@ import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import './index.css';
 
-// Register PWA Service Worker calmly without ANY auto-reload loops
+// Build / Modification Version identifier
+export const APP_BUILD_VERSION = 'workshop-v10-20261005';
+const ACTIVE_CACHE_NAME = 'workshop-cache-v10';
+
+// 1. Automatic Old Cache Purge Mechanism after any modification / deployment
+if (typeof window !== 'undefined') {
+  try {
+    const savedVersion = localStorage.getItem('al_fann_build_version');
+    if (savedVersion !== APP_BUILD_VERSION) {
+      console.log(`[Cache Manager] New modification detected (${savedVersion || 'initial'} -> ${APP_BUILD_VERSION}). Purging outdated caches...`);
+      if ('caches' in window) {
+        caches.keys().then((keys) => {
+          return Promise.all(
+            keys
+              .filter((key) => key !== ACTIVE_CACHE_NAME)
+              .map((key) => {
+                console.log('[Cache Manager] Deleted legacy cache:', key);
+                return caches.delete(key);
+              })
+          );
+        }).catch((err) => {
+          console.debug('[Cache Manager] Cache cleanup note:', err);
+        });
+      }
+      localStorage.setItem('al_fann_build_version', APP_BUILD_VERSION);
+    }
+  } catch (e) {
+    console.debug('[Cache Manager] Storage read note:', e);
+  }
+}
+
+// 2. Register Service Worker with active update checking
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js', { scope: '/' })
       .then((reg) => {
-        // Register cleanly in background without refreshing the page
         console.debug('ServiceWorker active scope:', reg.scope);
+        // Promptly check for updates on each load so changes take effect immediately
+        if (navigator.onLine && reg) {
+          reg.update().catch(() => {});
+        }
       })
       .catch((err) => console.debug('ServiceWorker registration info:', err));
+
+    // Listen for broadcast messages from Service Worker
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data?.type === 'OLD_CACHE_PURGED') {
+        console.log('[Cache Manager] Service Worker confirmed old caches purged. Current cache:', event.data.cacheName);
+      }
+    });
   });
 }
 

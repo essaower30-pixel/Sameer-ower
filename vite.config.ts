@@ -25,6 +25,11 @@ export default defineConfig(() => {
                 return fs.createReadStream(swPath).pipe(res);
               }
             }
+            if (req.url === '/' || req.url === '/index.html') {
+              res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+              res.setHeader('Pragma', 'no-cache');
+              res.setHeader('Expires', '0');
+            }
             if (req.url === '/manifest.webmanifest' || req.url === '/manifest.json') {
               const mPath = path.resolve(__dirname, 'public/manifest.webmanifest');
               if (fs.existsSync(mPath)) {

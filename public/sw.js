@@ -1,4 +1,4 @@
-const CACHE_NAME = 'workshop-cache-v9';
+const CACHE_NAME = 'workshop-cache-v10';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.webmanifest',
@@ -12,7 +12,7 @@ const PRECACHE_ASSETS = [
   '/apple-touch-icon.png'
 ];
 
-// 1. Install event: Precache static shell assets
+// 1. Install event: Skip waiting immediately to activate fresh code
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
@@ -25,7 +25,7 @@ self.addEventListener('install', (event) => {
               await cache.put(assetUrl, res);
             }
           } catch {
-            // Silently continue if single file isn't found
+            // Silently continue if asset is missing
           }
         })
       );
@@ -33,39 +33,76 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// 2. Activate event: Clean older caches and take control
+// 2. Activate event: Automatically delete ALL older caches after any modification
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
       try {
         const keys = await caches.keys();
-        await Promise.all(
-          keys.map((key) => {
-            if (key !== CACHE_NAME && key.startsWith('workshop-cache-')) {
-              return caches.delete(key);
-            }
-          })
-        );
+        // Delete EVERY cache that does not match the active current cache
+        const deletions = keys
+          .filter((key) => key !== CACHE_NAME)
+          .map((key) => {
+            console.debug('[SW Cache Management] Deleting outdated cache:', key);
+            return caches.delete(key);
+          });
+        await Promise.all(deletions);
       } catch (err) {
-        console.debug('Cache prune error:', err);
+        console.debug('[SW Cache Management] Cache prune error:', err);
       }
+
+      // Immediately take control of all open pages/clients
       await self.clients.claim();
+
+      // Notify open clients that old cache was purged and new version is running
+      try {
+        const clients = await self.clients.matchAll({ type: 'window' });
+        for (const client of clients) {
+          client.postMessage({ type: 'OLD_CACHE_PURGED', cacheName: CACHE_NAME });
+        }
+      } catch {}
     })()
   );
 });
 
-// 3. Message event: Support manual cache actions
+// 3. Message event: Support on-demand cache cleanup and manual sync
 self.addEventListener('message', (event) => {
   if (!event.data) return;
+
   if (event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
-  if (event.data.type === 'CLEAR_CACHE') {
-    caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))));
+
+  // Clear all caches or only outdated ones
+  if (event.data.type === 'PURGE_OLD_CACHES' || event.data.type === 'CLEAR_CACHE') {
+    caches.keys().then((keys) => {
+      const targets = event.data.type === 'PURGE_OLD_CACHES'
+        ? keys.filter((k) => k !== CACHE_NAME)
+        : keys;
+      return Promise.all(targets.map((k) => caches.delete(k)));
+    }).then(() => {
+      if (event.ports && event.ports[0]) {
+        event.ports[0].postMessage({ success: true, activeCache: CACHE_NAME });
+      }
+    });
+  }
+
+  // Cache specific dynamic resources if requested by app
+  if (event.data.type === 'CACHE_PAGE_RESOURCES' && Array.isArray(event.data.urls)) {
+    caches.open(CACHE_NAME).then(async (cache) => {
+      await Promise.allSettled(
+        event.data.urls.map(async (url) => {
+          try {
+            const res = await fetch(url, { cache: 'reload' });
+            if (res.ok) await cache.put(url, res);
+          } catch {}
+        })
+      );
+    });
   }
 });
 
-// 4. Fetch event: Reliable navigation and safe caching
+// 4. Fetch event: Reliable navigation and offline fallback
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 

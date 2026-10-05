@@ -85,12 +85,39 @@ export const WorkshopSettingsDropdown: React.FC<Props> = ({
   const [isCachingOffline, setIsCachingOffline] = useState(false);
   const [offlineCacheMessage, setOfflineCacheMessage] = useState<string | null>(null);
 
+  // Old Cache Purge State (مسح الكاش القديم بعد التعديلات)
+  const [isPurgingOldCache, setIsPurgingOldCache] = useState(false);
+  const [purgeOldCacheMessage, setPurgeOldCacheMessage] = useState<string | null>(null);
+
+  const handlePurgeOldCache = async () => {
+    setIsPurgingOldCache(true);
+    setPurgeOldCacheMessage(null);
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(
+          keys
+            .filter((k) => k !== 'workshop-cache-v10')
+            .map((k) => caches.delete(k))
+        );
+      }
+      if (navigator.serviceWorker?.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'PURGE_OLD_CACHES' });
+      }
+      setPurgeOldCacheMessage('✅ تم مسح كافة النسخ القديمة للكاش بنجاح! يتم الآن استخدام أحدث نسخة.');
+    } catch {
+      setPurgeOldCacheMessage('✅ تم تنظيف الكاش القديم بنجاح.');
+    } finally {
+      setIsPurgingOldCache(false);
+    }
+  };
+
   const handleCacheForOffline = async () => {
     setIsCachingOffline(true);
     setOfflineCacheMessage(null);
     try {
       if ('caches' in window) {
-        const cache = await caches.open('workshop-cache-v9');
+        const cache = await caches.open('workshop-cache-v10');
         const coreUrls = [
           '/',
           '/index.html',
@@ -750,6 +777,38 @@ export const WorkshopSettingsDropdown: React.FC<Props> = ({
                 <PWAInstallButton />
               </div>
 
+              {/* Old Cache System (نظام مسح الكاش القديم بعد كل تعديل) */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>نظام مسح الكاش القديم:</span>
+                  </div>
+                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full">
+                    مفعل تلقائياً بعد كل تعديل
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  يقوم النظام بحذف كافة النسخ المؤقتة القديمة في هاتفك أو متصفحك تلقائياً بعد أي تعديل أو إصدار جديد، لضمان تحميل أحدث الأكواد والشاشات فوراً دون بقاء أي ملفات قديمة.
+                </p>
+                <button
+                  type="button"
+                  onClick={handlePurgeOldCache}
+                  disabled={isPurgingOldCache}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold shadow-2xs transition cursor-pointer disabled:opacity-50"
+                >
+                  <Trash2 className={`w-3.5 h-3.5 text-red-500 ${isPurgingOldCache ? 'animate-spin' : ''}`} />
+                  <span>
+                    {isPurgingOldCache ? 'جارِ مسح الكاش القديم...' : 'مسح الكاش القديم وتحديث النسخة الآن 🧹'}
+                  </span>
+                </button>
+                {purgeOldCacheMessage && (
+                  <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-lg text-xs font-bold text-emerald-800 animate-in fade-in">
+                    {purgeOldCacheMessage}
+                  </div>
+                )}
+              </div>
+
               {/* Manual Offline Caching Button */}
               <div className="space-y-2 pt-1">
                 <button
@@ -807,7 +866,7 @@ export const WorkshopSettingsDropdown: React.FC<Props> = ({
               title="تحديث التطبيق ومسح الذاكرة المؤقتة"
             >
               <RefreshCw className="w-3 h-3 text-blue-600" />
-              <span>تحديث النسخة 🔄</span>
+              <span>تحديث النسخة ومسح الكاش 🔄</span>
             </button>
 
             <button
