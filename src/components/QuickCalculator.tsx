@@ -100,6 +100,12 @@ export const QuickCalculator: React.FC<Props> = ({
       setBoxAllowanceCm(30);
       setAdditionalPrice(60);
       setAdditionalNote('محرك كهربائي');
+    } else if (cat === 'kitchens') {
+      setItemName('مطبخ تفصيل مودرن');
+      setWidth(400);
+      setHeight(220);
+      setAdditionalPrice(0);
+      setAdditionalNote('خشب هاي غلوس ورخام كوارتز');
     }
   };
 
@@ -213,8 +219,8 @@ export const QuickCalculator: React.FC<Props> = ({
             <label className="block text-xs font-bold text-slate-700 mb-2">
               اختر نوع المنتج:
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {(['aluminum', 'accordion', 'zebra', 'shutters'] as ProductCategory[]).map((cat) => {
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {(['aluminum', 'accordion', 'zebra', 'shutters', 'kitchens'] as ProductCategory[]).map((cat) => {
                 const info = CATEGORY_LABELS[cat];
                 const active = category === cat;
                 return (

@@ -204,6 +204,7 @@ export const FinancesPage: React.FC<Props> = ({
     accordion: { sales: 0, cost: 0, profit: 0, area: 0, count: 0 },
     zebra: { sales: 0, cost: 0, profit: 0, area: 0, count: 0 },
     shutters: { sales: 0, cost: 0, profit: 0, area: 0, count: 0 },
+    kitchens: { sales: 0, cost: 0, profit: 0, area: 0, count: 0 },
   };
 
   orders.forEach((order) => {
@@ -1508,8 +1509,8 @@ export const FinancesPage: React.FC<Props> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {(['aluminum', 'accordion', 'zebra', 'shutters'] as ProductCategory[]).map((cat) => {
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {(['aluminum', 'accordion', 'zebra', 'shutters', 'kitchens'] as ProductCategory[]).map((cat) => {
               const stats = categoryStats[cat];
               const margin = stats.sales > 0 ? ((stats.profit / stats.sales) * 100).toFixed(0) : '0';
 
@@ -1518,6 +1519,7 @@ export const FinancesPage: React.FC<Props> = ({
                 accordion: 'border-amber-200 bg-amber-50/30',
                 zebra: 'border-emerald-200 bg-emerald-50/30',
                 shutters: 'border-purple-200 bg-purple-50/30',
+                kitchens: 'border-orange-200 bg-orange-50/30',
               }[cat];
 
               return (

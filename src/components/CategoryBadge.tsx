@@ -1,6 +1,6 @@
 import React from 'react';
 import { ProductCategory } from '../types';
-import { Grid, Split, Blinds, Maximize2 } from 'lucide-react';
+import { Grid, Split, Blinds, Maximize2, UtensilsCrossed } from 'lucide-react';
 
 interface Props {
   category: ProductCategory;
@@ -39,6 +39,13 @@ export const CategoryBadge: React.FC<Props> = ({ category, size = 'md' }) => {
       text: 'text-purple-700',
       border: 'border-purple-200',
       icon: <Maximize2 className={size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4'} />,
+    },
+    kitchens: {
+      label: 'مطابخ وتفصيل',
+      bg: 'bg-orange-50',
+      text: 'text-orange-800',
+      border: 'border-orange-200',
+      icon: <UtensilsCrossed className={size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4'} />,
     },
   };
 

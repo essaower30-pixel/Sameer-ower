@@ -36,13 +36,25 @@ export const SettingsModal: React.FC<Props> = ({
   onImportData,
   onResetData,
 }) => {
-  const [formData, setFormData] = useState<WorkshopSettings>(settings);
+  const [formData, setFormData] = useState<WorkshopSettings>(() => ({
+    ...settings,
+    defaultCosts: {
+      ...DEFAULT_SETTINGS.defaultCosts,
+      ...settings.defaultCosts,
+    },
+  }));
   const [isSavedNotice, setIsSavedNotice] = useState(false);
   const [saveTimestamp, setSaveTimestamp] = useState<string | null>(null);
 
   // Synchronize when settings change from external actions (like currency bar in Navbar)
   useEffect(() => {
-    setFormData(settings);
+    setFormData({
+      ...settings,
+      defaultCosts: {
+        ...DEFAULT_SETTINGS.defaultCosts,
+        ...settings.defaultCosts,
+      },
+    });
   }, [settings]);
 
   const handleUpdateCost = (
@@ -539,6 +551,57 @@ export const SettingsModal: React.FC<Props> = ({
                     value={formData.defaultCosts.shutters.minArea}
                     onChange={(e) =>
                       handleUpdateCost('shutters', 'minArea', parseFloat(e.target.value) || 0)
+                    }
+                    className="w-full p-1.5 border border-slate-300 rounded font-mono font-bold bg-white"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Kitchens (المطابخ والتفصيل) */}
+            <div className="p-4 rounded-xl border border-orange-200 bg-orange-50/30 space-y-3 sm:col-span-2">
+              <div className="flex items-center justify-between font-bold text-orange-950 text-sm">
+                <span className="flex items-center gap-1.5">
+                  <span className="text-base">🍳</span>
+                  <span>مطابخ وتفصيل (خشب، هاي غلوس، ألمنيوم، رخام)</span>
+                </span>
+                <span className="text-xs bg-orange-100 text-orange-900 px-2 py-0.5 rounded font-bold">
+                  سعر المتر الافتراضي + أصناف التصنيع
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div>
+                  <label className="text-[11px] text-slate-600 block mb-1">تكلفة المتر الافتراضية:</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={formData.defaultCosts.kitchens?.costPerMeter ?? 90}
+                    onChange={(e) =>
+                      handleUpdateCost('kitchens', 'costPerMeter', parseFloat(e.target.value) || 0)
+                    }
+                    className="w-full p-1.5 border border-slate-300 rounded font-mono font-bold bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-orange-900 block mb-1">سعر بيع المتر للزبون:</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={formData.defaultCosts.kitchens?.pricePerMeter ?? 160}
+                    onChange={(e) =>
+                      handleUpdateCost('kitchens', 'pricePerMeter', parseFloat(e.target.value) || 0)
+                    }
+                    className="w-full p-1.5 border border-orange-300 rounded font-mono font-bold bg-white text-orange-950"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-slate-600 block mb-1">الحد الأدنى م²:</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={formData.defaultCosts.kitchens?.minArea ?? 2.0}
+                    onChange={(e) =>
+                      handleUpdateCost('kitchens', 'minArea', parseFloat(e.target.value) || 0)
                     }
                     className="w-full p-1.5 border border-slate-300 rounded font-mono font-bold bg-white"
                   />

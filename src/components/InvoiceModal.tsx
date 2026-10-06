@@ -157,8 +157,53 @@ export const InvoiceModal: React.FC<Props> = ({ order, settings, currency: defau
                           {idx + 1}
                         </td>
                         <td className="p-2 border border-slate-200">
-                          <div className="font-bold text-slate-900">{item.name}</div>
-                          {(item.additionalPrice > 0 || item.additionalName) && (
+                          <div className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
+                            <span>{item.name}</span>
+                            {item.category === 'kitchens' && (
+                              <span className="text-[10px] bg-orange-100 text-orange-900 border border-orange-300 font-bold px-1.5 py-0.5 rounded">
+                                تفصيل وتصنيع مطبخ
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Kitchen Specific Specifications & Components */}
+                          {item.category === 'kitchens' && item.options && (
+                            <div className="mt-1 space-y-1 text-[11px] text-slate-700 bg-orange-50/60 p-2 rounded border border-orange-200/80">
+                              <div className="flex flex-wrap gap-x-3 gap-y-1 text-slate-800">
+                                {item.options.kitchenLayout && (
+                                  <span><strong className="text-orange-950">التصميم:</strong> {item.options.kitchenLayout}</span>
+                                )}
+                                {item.options.kitchenDoorsType && (
+                                  <span><strong className="text-orange-950">الدرف:</strong> {item.options.kitchenDoorsType}</span>
+                                )}
+                                {item.options.kitchenCountertop && (
+                                  <span><strong className="text-orange-950">الرخام:</strong> {item.options.kitchenCountertop}</span>
+                                )}
+                                {item.options.kitchenCabinetBody && (
+                                  <span><strong className="text-orange-950">الهيكل:</strong> {item.options.kitchenCabinetBody}</span>
+                                )}
+                              </div>
+
+                              {/* Kitchen Included Components / Bill of Materials */}
+                              {item.options.kitchenComponents && item.options.kitchenComponents.length > 0 && (
+                                <div className="mt-1.5 pt-1.5 border-t border-orange-200/60">
+                                  <div className="font-bold text-[10px] text-orange-950 mb-0.5">
+                                    الأصناف والخامات المشمولة في تصنيع المطبخ ({item.options.kitchenComponents.length} أصناف):
+                                  </div>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[10px]">
+                                    {item.options.kitchenComponents.map((c, cIdx) => (
+                                      <div key={c.id || cIdx} className="flex items-center justify-between bg-white/80 px-1.5 py-0.5 rounded border border-orange-200/50">
+                                        <span className="truncate max-w-[200px] font-medium text-slate-800">• {c.name}</span>
+                                        <span className="font-mono text-slate-500 shrink-0">({c.quantity} {c.unit})</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {(item.additionalPrice > 0 || item.additionalName) && item.category !== 'kitchens' && (
                             <div className="text-[11px] text-amber-900 font-semibold mt-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/80 inline-flex items-center gap-1">
                               <span>+ إضافات متفق عليها:</span>
                               <span className="font-bold">{item.additionalName || 'مسكات باب / قفل / إكسسوار'}</span>

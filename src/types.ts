@@ -1,8 +1,23 @@
-export type ProductCategory = 'aluminum' | 'accordion' | 'zebra' | 'shutters';
+export type ProductCategory = 'aluminum' | 'accordion' | 'zebra' | 'shutters' | 'kitchens';
 
 export type MeasurementUnit = 'cm' | 'm';
 
 export type OrderStatus = 'quotation' | 'in_progress' | 'ready' | 'completed' | 'cancelled';
+
+/**
+ * صنف أو مادة تدخل في صناعة وتفصيل المطبخ (Bill of Materials)
+ */
+export interface KitchenComponentItem {
+  id: string;
+  name: string; // اسم الصنف / الخامة (مثال: درف هاي غلوس، مفصلات هيدروليك بلوم، رخام كوارتز، سلة دوارة...)
+  categoryType?: 'doors' | 'body' | 'countertop' | 'hardware' | 'accessories' | 'appliances' | 'other';
+  quantity: number; // الكمية
+  unit: string; // متر طولي، حبة، طقم، لوح، م²
+  unitCost?: number; // تكلفة الصنف على الورشة
+  unitPrice: number; // سعر بيع الصنف للزبون
+  totalPrice: number; // الإجمالي للزبون
+  notes?: string;
+}
 
 export interface ItemOptions {
   // Aluminum specific
@@ -22,6 +37,16 @@ export interface ItemOptions {
   shutterSlat?: string; // شريحة فوم عازل، شريحة سحب ألمنيوم مقوى (حماية)
   shutterOperation?: string; // شريط منافيل يدوي، موتور سومفي فرنسي، موتور إيطالي/صيني، مفتاح حائط، ريموت
   boxAllowanceCm?: number; // زيادة ارتفاع صندوق الأباجور بالسنتيمتر (مثلاً +25سم أو +30سم)
+
+  // Kitchens specific (قسم وتفصيل المطابخ)
+  kitchenLayout?: string; // مستقيم I-Shape، حرف L، حرف U، مع جزيرة وسطية
+  kitchenCabinetBody?: string; // خشب لاتيه 18ملم، MDF ميلامين مقاوم للرطوبة، ألمنيوم دبل، خشب صولد
+  kitchenDoorsType?: string; // هاي غلوس تركي/ألماني، بولي لاك Polylac، كلادينج، أكريليك، قشرة بلوط، زجاج بروفيل
+  kitchenCountertop?: string; // رخام كوارتز تركي، جرانيت طبيعي جلاكسي، رخام صناعي كوربان، خشب معالج HPL
+  kitchenHingesAndSlides?: string; // مفصلات ومجاري بلوم Blum هيدروليك، سوفت كلوز، ساميت تركي
+  kitchenLinearMeters?: number; // إجمالي الأمتار الطولية للمطبخ (علوي + سفلي)
+  kitchenComponentsRollup?: boolean; // هل يتم ترحيل أسعار الأصناف تلقائياً إلى إجمالي بيع المطبخ
+  kitchenComponents?: KitchenComponentItem[]; // قائمة الأصناف والخامات الداخلة في صناعة المطبخ
 }
 
 export interface OrderItem {
@@ -121,6 +146,11 @@ export const CATEGORY_LABELS: Record<ProductCategory, { title: string; subtitle:
     title: 'أباجورات وشتر',
     subtitle: 'شتر ألمنيوم فوم وحماية، يدوي ومحركات كهربائية',
     icon: 'Maximize2',
+  },
+  kitchens: {
+    title: 'مطابخ وتفصيل',
+    subtitle: 'مطابخ ألمنيوم وخشب، هاي غلوس، بولي لاك، رخام وإكسسوارات',
+    icon: 'UtensilsCrossed',
   },
 };
 
@@ -264,5 +294,6 @@ export const DEFAULT_SETTINGS: WorkshopSettings = {
     accordion: { costPerMeter: 25, pricePerMeter: 45, minArea: 1.8 },
     zebra: { costPerMeter: 12, pricePerMeter: 22, minArea: 1.5 },
     shutters: { costPerMeter: 35, pricePerMeter: 60, minArea: 1.5 },
+    kitchens: { costPerMeter: 90, pricePerMeter: 160, minArea: 2.0 },
   },
 };

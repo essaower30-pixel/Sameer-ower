@@ -51,6 +51,12 @@ export function extractCostsFromPurchases(
       invoiceNumber: 'افتراضي',
       details: 'تكلفة شرائح الشتر والمحركات',
     },
+    kitchens: {
+      costPerMeter: defaultCosts.kitchens?.costPerMeter || 90,
+      supplierName: 'سعر افتراضي للمطابخ',
+      invoiceNumber: 'افتراضي',
+      details: 'تكلفة خامات ومكونات تفصيل المطابخ',
+    },
   };
 
   if (!purchaseInvoices || purchaseInvoices.length === 0) {

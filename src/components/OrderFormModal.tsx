@@ -16,6 +16,7 @@ import {
   generateLinkedPurchaseInvoice,
 } from '../utils/purchaseSync';
 import { CategoryBadge } from './CategoryBadge';
+import { KitchenItemBuilder } from './KitchenItemBuilder';
 import {
   X,
   Plus,
@@ -37,6 +38,7 @@ import {
   RefreshCw,
   Sparkles,
   Coins,
+  UtensilsCrossed,
 } from 'lucide-react';
 
 interface Props {
@@ -238,22 +240,75 @@ export const OrderFormModal: React.FC<Props> = ({
 
   // Add Item from Preset or Default
   const handleAddItem = (category: ProductCategory = 'aluminum') => {
-    const defaults = settings.defaultCosts[category];
+    const defaults = settings.defaultCosts[category] || {
+      costPerMeter: 90,
+      pricePerMeter: 160,
+      minArea: 2.0,
+    };
     const defaultTitles: Record<ProductCategory, string> = {
       aluminum: 'شباك ألمنيوم سحاب',
       accordion: 'باب أكرديون',
       zebra: 'ستارة زيبرا قماش تركي',
       shutters: 'أباجور شتر ألمنيوم فوم',
+      kitchens: 'تفصيل وتصنيع مطبخ مودرن',
     };
 
     const preferredUnit = settings.defaultUnit || 'cm';
-    let defaultW = category === 'accordion' ? 100 : 160;
-    let defaultH = category === 'accordion' ? 210 : 140;
+    let defaultW = category === 'accordion' ? 100 : category === 'kitchens' ? (preferredUnit === 'm' ? 4.0 : 400) : 160;
+    let defaultH = category === 'accordion' ? 210 : category === 'kitchens' ? (preferredUnit === 'm' ? 2.2 : 220) : 140;
 
-    if (preferredUnit === 'm') {
+    if (preferredUnit === 'm' && category !== 'kitchens') {
       defaultW = category === 'accordion' ? 1.0 : 1.6;
       defaultH = category === 'accordion' ? 2.1 : 1.4;
     }
+
+    // Default kitchen initial components
+    const defaultKitchenComponents = category === 'kitchens' ? [
+      {
+        id: `kc-${Date.now()}-1`,
+        name: 'درف وخزائن هاي غلوس تركي/ألماني فائق اللمعان',
+        categoryType: 'doors' as const,
+        quantity: 4,
+        unit: 'متر طولي',
+        unitCost: 35,
+        unitPrice: 65,
+        totalPrice: 260,
+      },
+      {
+        id: `kc-${Date.now()}-2`,
+        name: 'رخام كاونتر كوارتز تركي معالج مع الحواف',
+        categoryType: 'countertop' as const,
+        quantity: 4,
+        unit: 'متر طولي',
+        unitCost: 25,
+        unitPrice: 50,
+        totalPrice: 200,
+      },
+      {
+        id: `kc-${Date.now()}-3`,
+        name: 'طقم مفصلات هيدروليك بلوم Blum سوفت كلوز',
+        categoryType: 'hardware' as const,
+        quantity: 1,
+        unit: 'طقم كامل',
+        unitCost: 20,
+        unitPrice: 40,
+        totalPrice: 40,
+      },
+    ] : [];
+
+    const initialAddPrice = defaultKitchenComponents.reduce((sum, c) => sum + c.totalPrice, 0);
+    const initialAddCost = defaultKitchenComponents.reduce((sum, c) => sum + ((c.unitCost || 0) * c.quantity), 0);
+
+    const initialOptions = {
+      boxAllowanceCm: category === 'shutters' ? 30 : undefined,
+      kitchenLayout: category === 'kitchens' ? 'شكل حرف L (زاوية)' : undefined,
+      kitchenCabinetBody: category === 'kitchens' ? 'خشب لاتيه إندونيسي 18ملم مقاوم للرطوبة' : undefined,
+      kitchenDoorsType: category === 'kitchens' ? 'خشب هاي غلوس High Gloss ألماني/تركي فائق اللمعان' : undefined,
+      kitchenCountertop: category === 'kitchens' ? 'رخام كوارتز تركي معالج (مقاوم للبقع)' : undefined,
+      kitchenHingesAndSlides: category === 'kitchens' ? 'مفصلات ومجاري بلوم Blum نمساوي هيدروليك سوفت كلوز' : undefined,
+      kitchenComponentsRollup: true,
+      kitchenComponents: category === 'kitchens' ? defaultKitchenComponents : undefined,
+    };
 
     const metrics = calculateItemMetrics({
       category,
@@ -264,9 +319,9 @@ export const OrderFormModal: React.FC<Props> = ({
       minArea: defaults.minArea,
       costPerMeter: defaults.costPerMeter,
       pricePerMeter: defaults.pricePerMeter,
-      options: {
-        boxAllowanceCm: category === 'shutters' ? 30 : undefined,
-      },
+      additionalCost: initialAddCost,
+      additionalPrice: initialAddPrice,
+      options: initialOptions,
     });
 
     const newItem: OrderItem = {
@@ -282,15 +337,13 @@ export const OrderFormModal: React.FC<Props> = ({
       totalArea: metrics.totalArea,
       costPerMeter: defaults.costPerMeter,
       pricePerMeter: defaults.pricePerMeter,
-      additionalCost: 0,
-      additionalPrice: 0,
+      additionalCost: initialAddCost,
+      additionalPrice: initialAddPrice,
       totalCost: metrics.totalCost,
       totalPrice: metrics.totalPrice,
       profit: metrics.profit,
       profitMargin: metrics.profitMargin,
-      options: {
-        boxAllowanceCm: category === 'shutters' ? 30 : undefined,
-      },
+      options: initialOptions,
     };
 
     setItems([...items, newItem]);
@@ -565,6 +618,14 @@ export const OrderFormModal: React.FC<Props> = ({
                   <Plus className="w-3.5 h-3.5" />
                   <span>أباجور شتر</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => handleAddItem('kitchens')}
+                  className="text-xs bg-orange-100 hover:bg-orange-200/90 text-orange-950 font-black px-3 py-1.5 rounded-lg border-2 border-orange-400 transition-all flex items-center gap-1.5 shadow-2xs hover:scale-105 active:scale-95 cursor-pointer"
+                >
+                  <UtensilsCrossed className="w-3.5 h-3.5 text-orange-700" />
+                  <span>+ تفصيل مطبخ (المطابخ)</span>
+                </button>
               </div>
             </div>
 
@@ -774,124 +835,143 @@ export const OrderFormModal: React.FC<Props> = ({
                       </div>
                     </div>
 
-                    {/* Dedicated Optional Additions Box (مسكات الباب، القفل، الإكسسوارات بالاتفاق مع الزبون) */}
-                    {Boolean(item.hasAdditions || item.additionalPrice > 0 || item.additionalName) ? (
-                      <div className="p-3 sm:p-4 bg-amber-50/70 border-t border-b border-amber-200/90 space-y-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className="p-1 bg-amber-200 text-amber-900 rounded-md">
-                              <Key className="w-3.5 h-3.5" />
-                            </span>
-                            <span className="font-bold text-xs sm:text-sm text-amber-950">
-                              مربع الإضافات والإكسسوارات (مسكات، قفل، إلخ بالاتفاق مع الزبون):
-                            </span>
-                            <span className="text-[10px] bg-amber-200 text-amber-900 font-semibold px-2 py-0.5 rounded-full">
-                              اختياري
-                            </span>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updateItem(item.id, {
-                                hasAdditions: false,
-                                additionalName: '',
-                                additionalPrice: 0,
-                                additionalCost: 0,
-                              })
-                            }
-                            className="text-[11px] text-rose-600 hover:text-rose-800 hover:bg-rose-100/60 px-2 py-1 rounded transition-colors flex items-center gap-1 font-medium"
-                            title="إلغاء الإضافات وتفريغ السعر"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                            <span>إلغاء الإضافة</span>
-                          </button>
-                        </div>
-
-                        {/* Additions Input Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 text-xs">
-                          {/* Addition Name / Description */}
-                          <div className="sm:col-span-7">
-                            <label className="block text-[11px] font-bold text-amber-950 mb-1">
-                              بيان ونوع الإضافة (مسكة باب، قفل، إكسسوار):
-                            </label>
-                            <input
-                              type="text"
-                              value={item.additionalName || ''}
-                              onChange={(e) =>
-                                updateItem(item.id, {
-                                  additionalName: e.target.value,
-                                  hasAdditions: true,
-                                })
-                              }
-                              placeholder="مثال: مسكة باب، قفل، دفاش..."
-                              className="w-full px-2.5 py-2 bg-white border border-amber-300 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-amber-500 font-medium"
-                            />
-                          </div>
-
-                          {/* Addition Price to Customer (Rolls up to Total) */}
-                          <div className="sm:col-span-5">
-                            <label className="block text-[11px] font-bold text-amber-950 mb-1">
-                              سعر بيع الإضافة للزبون ({currency}) <span className="text-emerald-700 font-bold">→ للإجمالي</span>:
-                            </label>
-                            <input
-                              type="number"
-                              step="any"
-                              min="0"
-                              value={item.additionalPrice || ''}
-                              onChange={(e) =>
-                                updateItem(item.id, {
-                                  additionalPrice: parseFloat(e.target.value) || 0,
-                                  hasAdditions: true,
-                                })
-                              }
-                              placeholder="0"
-                              className="w-full px-2.5 py-2 bg-white border-2 border-amber-400 rounded-lg font-bold font-mono text-center text-slate-900 focus:outline-hidden focus:border-amber-600 shadow-2xs"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Rollup Explanation Bar */}
-                        <div className="bg-amber-100/70 p-2.5 rounded-lg border border-amber-200 text-xs flex flex-wrap items-center justify-between gap-2">
-                          <div className="text-[11px] text-amber-950">
-                            <span className="font-bold">تفصيل حساب البند مع الإضافة: </span>
-                            <span>
-                              فاتورة البيع ({item.totalArea} م² × {formatCurrency(item.pricePerMeter, currency)})
-                              {item.additionalPrice > 0 && (
-                                <span className="font-semibold text-amber-900">
-                                  {' '}+ {formatCurrency(item.additionalPrice, currency)} {item.additionalName ? `(${item.additionalName})` : 'إضافات'}
-                                  {item.quantity > 1 ? ` × ${item.quantity} قطع` : ''}
-                                </span>
-                              )}
-                              {' '}={' '}
-                              <span className="font-bold text-slate-900 font-mono text-xs">
-                                {formatCurrency(item.totalPrice, currency)}
-                              </span>
-                            </span>
-                          </div>
-
-                          {item.additionalPrice > 0 && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
-                              <Check className="w-3 h-3 text-emerald-700" />
-                              تم ترحيل +{formatCurrency((item.additionalPrice || 0) * (item.quantity || 1), currency)} إلى الإجمالي تلقائياً
-                            </span>
-                          )}
-                        </div>
+                    {/* Kitchen Dedicated Builder (مواصفات الخشب، الرخام، الدرف، وقائمة أصناف وخامات التصنيع) */}
+                    {item.category === 'kitchens' ? (
+                      <div className="p-3 sm:p-4 bg-orange-50/20 border-t border-orange-200">
+                        <KitchenItemBuilder
+                          item={item}
+                          currency={currency}
+                          onUpdateOptions={(newOpts) => {
+                            updateItem(item.id, { options: newOpts });
+                          }}
+                          onSyncComponentTotals={(componentsCost, componentsPrice) => {
+                            updateItem(item.id, {
+                              additionalCost: componentsCost,
+                              additionalPrice: componentsPrice,
+                            });
+                          }}
+                        />
                       </div>
                     ) : (
-                      <div className="px-3 sm:px-4 py-2 bg-slate-50/70 border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-2">
-                        <button
-                          type="button"
-                          onClick={() => updateItem(item.id, { hasAdditions: true })}
-                          className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 hover:text-amber-900 bg-amber-50 hover:bg-amber-100/80 border border-amber-300 px-3 py-1.5 rounded-lg transition-all shadow-2xs active:scale-95"
-                        >
-                          <Key className="w-3.5 h-3.5 text-amber-600" />
-                          <span>+ إضافة مربع الإكسسوارات (مسكات باب، قفل، إلخ) بالاتفاق مع الزبون</span>
-                        </button>
-                        <span className="text-[11px] text-slate-400">
-                          اختياري: يرحّل سعر الإضافة تلقائياً إلى إجمالي فاتورة البيع
-                        </span>
-                      </div>
+                      /* Dedicated Optional Additions Box for Aluminum/Accordion/Zebra/Shutters */
+                      Boolean(item.hasAdditions || item.additionalPrice > 0 || item.additionalName) ? (
+                        <div className="p-3 sm:p-4 bg-amber-50/70 border-t border-b border-amber-200/90 space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="p-1 bg-amber-200 text-amber-900 rounded-md">
+                                <Key className="w-3.5 h-3.5" />
+                              </span>
+                              <span className="font-bold text-xs sm:text-sm text-amber-950">
+                                مربع الإضافات والإكسسوارات (مسكات، قفل، إلخ بالاتفاق مع الزبون):
+                              </span>
+                              <span className="text-[10px] bg-amber-200 text-amber-900 font-semibold px-2 py-0.5 rounded-full">
+                                اختياري
+                              </span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateItem(item.id, {
+                                  hasAdditions: false,
+                                  additionalName: '',
+                                  additionalPrice: 0,
+                                  additionalCost: 0,
+                                })
+                              }
+                              className="text-[11px] text-rose-600 hover:text-rose-800 hover:bg-rose-100/60 px-2 py-1 rounded transition-colors flex items-center gap-1 font-medium"
+                              title="إلغاء الإضافات وتفريغ السعر"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>إلغاء الإضافة</span>
+                            </button>
+                          </div>
+
+                          {/* Additions Input Grid */}
+                          <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 text-xs">
+                            {/* Addition Name / Description */}
+                            <div className="sm:col-span-7">
+                              <label className="block text-[11px] font-bold text-amber-950 mb-1">
+                                بيان ونوع الإضافة (مسكة باب، قفل، إكسسوار):
+                              </label>
+                              <input
+                                type="text"
+                                value={item.additionalName || ''}
+                                onChange={(e) =>
+                                  updateItem(item.id, {
+                                    additionalName: e.target.value,
+                                    hasAdditions: true,
+                                  })
+                                }
+                                placeholder="مثال: مسكة باب، قفل، دفاش..."
+                                className="w-full px-2.5 py-2 bg-white border border-amber-300 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-amber-500 font-medium"
+                              />
+                            </div>
+
+                            {/* Addition Price to Customer (Rolls up to Total) */}
+                            <div className="sm:col-span-5">
+                              <label className="block text-[11px] font-bold text-amber-950 mb-1">
+                                سعر بيع الإضافة للزبون ({currency}) <span className="text-emerald-700 font-bold">→ للإجمالي</span>:
+                              </label>
+                              <input
+                                type="number"
+                                step="any"
+                                min="0"
+                                value={item.additionalPrice || ''}
+                                onChange={(e) =>
+                                  updateItem(item.id, {
+                                    additionalPrice: parseFloat(e.target.value) || 0,
+                                    hasAdditions: true,
+                                  })
+                                }
+                                placeholder="0"
+                                className="w-full px-2.5 py-2 bg-white border-2 border-amber-400 rounded-lg font-bold font-mono text-center text-slate-900 focus:outline-hidden focus:border-amber-600 shadow-2xs"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Rollup Explanation Bar */}
+                          <div className="bg-amber-100/70 p-2.5 rounded-lg border border-amber-200 text-xs flex flex-wrap items-center justify-between gap-2">
+                            <div className="text-[11px] text-amber-950">
+                              <span className="font-bold">تفصيل حساب البند مع الإضافة: </span>
+                              <span>
+                                فاتورة البيع ({item.totalArea} م² × {formatCurrency(item.pricePerMeter, currency)})
+                                {item.additionalPrice > 0 && (
+                                  <span className="font-semibold text-amber-900">
+                                    {' '}+ {formatCurrency(item.additionalPrice, currency)} {item.additionalName ? `(${item.additionalName})` : 'إضافات'}
+                                    {item.quantity > 1 ? ` × ${item.quantity} قطع` : ''}
+                                  </span>
+                                )}
+                                {' '}={' '}
+                                <span className="font-bold text-slate-900 font-mono text-xs">
+                                  {formatCurrency(item.totalPrice, currency)}
+                                </span>
+                              </span>
+                            </div>
+
+                            {item.additionalPrice > 0 && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                                <Check className="w-3 h-3 text-emerald-700" />
+                                تم ترحيل +{formatCurrency((item.additionalPrice || 0) * (item.quantity || 1), currency)} إلى الإجمالي تلقائياً
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="px-3 sm:px-4 py-2 bg-slate-50/70 border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={() => updateItem(item.id, { hasAdditions: true })}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 hover:text-amber-900 bg-amber-50 hover:bg-amber-100/80 border border-amber-300 px-3 py-1.5 rounded-lg transition-all shadow-2xs active:scale-95"
+                          >
+                            <Key className="w-3.5 h-3.5 text-amber-600" />
+                            <span>+ إضافة مربع الإكسسوارات (مسكات باب، قفل، إلخ) بالاتفاق مع الزبون</span>
+                          </button>
+                          <span className="text-[11px] text-slate-400">
+                            اختياري: يرحّل سعر الإضافة تلقائياً إلى إجمالي فاتورة البيع
+                          </span>
+                        </div>
+                      )
                     )}
                   </div>
                 );

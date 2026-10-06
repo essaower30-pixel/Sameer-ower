@@ -65,11 +65,16 @@ export default function App() {
     try {
       const saved = localStorage.getItem('workshop_orders');
       if (saved) {
-        const parsed: CustomerOrder[] = deduplicateById(JSON.parse(saved));
+        let parsed: CustomerOrder[] = deduplicateById(JSON.parse(saved));
         const hasSyp = parsed.some((o) => o.currency === 'ل.س');
         if (!hasSyp && INITIAL_ORDERS[2]) {
           const withoutDup = parsed.filter((o) => o.id !== INITIAL_ORDERS[2].id);
-          return deduplicateById([...withoutDup.map((o) => ({ ...o, currency: o.currency || '$' })), INITIAL_ORDERS[2]]);
+          parsed = deduplicateById([...withoutDup.map((o) => ({ ...o, currency: o.currency || '$' })), INITIAL_ORDERS[2]]);
+        }
+        const hasKitchen = parsed.some((o) => o.items?.some((it) => it.category === 'kitchens'));
+        if (!hasKitchen && INITIAL_ORDERS[3]) {
+          const withoutDup = parsed.filter((o) => o.id !== INITIAL_ORDERS[3].id);
+          parsed = deduplicateById([...withoutDup, INITIAL_ORDERS[3]]);
         }
         return parsed.map((o) => ({ ...o, currency: o.currency || '$' }));
       }
@@ -442,6 +447,7 @@ export default function App() {
                     <option value="accordion">أبواب الأكرديون</option>
                     <option value="zebra">ستائر زيبرا</option>
                     <option value="shutters">أباجورات شتر</option>
+                    <option value="kitchens">مطابخ وتفصيل</option>
                   </select>
                 </div>
 
