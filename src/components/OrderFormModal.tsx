@@ -359,89 +359,52 @@ export const OrderFormModal: React.FC<Props> = ({
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 no-print">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/70">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-slate-100 bg-slate-50/70 gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
               <Layers className="w-4 h-4" />
             </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 leading-tight truncate">
                 {initialOrder ? 'تعديل فاتورة البيع' : 'إصدار فاتورة بيع جديدة للزبون'}
               </h2>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs text-slate-500 font-mono">رقم الفاتورة: {orderNumber}</span>
-                <span className="text-[11px] text-blue-700 bg-blue-50 px-2 py-0.5 rounded font-medium border border-blue-200/80">
-                  فاتورة بيع رسمية للزبون
+                <span className="text-[11px] text-slate-500 font-mono">رقم: {orderNumber}</span>
+                <span className="hidden sm:inline-block text-[10px] text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded font-medium border border-blue-200/80">
+                  فاتورة بيع رسمية
                 </span>
               </div>
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Small icon & compact dropdown */}
+            <div className="flex items-center gap-1 bg-amber-50/90 border border-amber-300 rounded-lg px-2 py-1 text-xs shadow-2xs">
+              <Coins className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <select
+                value={orderCurrency}
+                onChange={(e) => setOrderCurrency(e.target.value)}
+                className="bg-transparent font-bold text-slate-800 text-xs focus:outline-hidden cursor-pointer"
+                title="تحديد عملة الفاتورة"
+              >
+                <option value="$">دولار ($)</option>
+                <option value="ل.س">ليرة سورية (ل.س)</option>
+                <option value="د.أ">دينار (د.أ)</option>
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Modal Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-          {/* Prominent Currency Selector Bar */}
-          <div className="bg-gradient-to-r from-amber-500/10 via-amber-50 to-blue-50/50 p-3.5 rounded-xl border border-amber-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold shadow-xs">
-                <Coins className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="text-xs font-black text-slate-900 block">
-                  العملة المعتمدة لهذه الفاتورة:
-                </span>
-                <span className="text-[11px] text-slate-600">
-                  تُحسب الأسعار والتكاليف والأرباح والوصل بهذه العملة
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5 w-full sm:w-auto">
-              <button
-                type="button"
-                onClick={() => setOrderCurrency('$')}
-                className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  orderCurrency === '$'
-                    ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-500/30'
-                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
-                }`}
-              >
-                <span>💵 دولار أمريكي ($)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setOrderCurrency('ل.س')}
-                className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  orderCurrency === 'ل.س'
-                    ? 'bg-amber-600 text-white shadow-xs ring-2 ring-amber-500/30'
-                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
-                }`}
-              >
-                <span>🇸🇾 ليرة سورية (ل.س)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setOrderCurrency('د.أ')}
-                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  orderCurrency === 'د.أ'
-                    ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-500/30'
-                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
-                }`}
-              >
-                <span>🇯🇴 دينار (د.أ)</span>
-              </button>
-            </div>
-          </div>
-
           {/* Customer & Order Metadata Section */}
           <div className="bg-slate-50/80 p-4 rounded-xl border border-slate-200/80 space-y-3">
             <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">

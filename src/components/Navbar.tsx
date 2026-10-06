@@ -6,6 +6,7 @@ import {
   Users,
   Truck,
   QrCode,
+  TrendingUp,
   X,
 } from 'lucide-react';
 import {
@@ -151,46 +152,25 @@ export const Navbar: React.FC<Props> = ({
               </span>
             </button>
 
-            {/* 3. الأرباح والميزانية (التقارير المالية) */}
+            {/* 3. الأرباح والخسائر والميزانية (الحسابات والمالية) */}
             <button
               id="nav-tab-finances"
               type="button"
               onClick={() => setActiveTab('finances')}
-              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 md:px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
-                activeTab === 'finances'
+              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
+                activeTab === 'finances' || activeTab === 'dual_currency'
                   ? 'bg-white text-purple-700 shadow-xs ring-1 ring-slate-200/60 font-black'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
-              title="أرباح وميزانية المحل والورشة"
+              title="قائمة الأرباح والخسائر وحسابات العملتين والميزانية"
             >
-              <Wallet
+              <TrendingUp
                 className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${
-                  activeTab === 'finances' ? 'text-purple-600' : 'text-slate-500'
+                  activeTab === 'finances' || activeTab === 'dual_currency' ? 'text-purple-600' : 'text-slate-500'
                 }`}
               />
-              <span className="hidden sm:inline">الأرباح والميزانية</span>
-              <span className="sm:hidden">الأرباح</span>
-            </button>
-
-            {/* 4. حسابات العملتين ($ ول.س) */}
-            <button
-              id="nav-tab-dual-currency"
-              type="button"
-              onClick={() => setActiveTab('dual_currency')}
-              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 md:px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
-                activeTab === 'dual_currency'
-                  ? 'bg-amber-600 text-white shadow-xs ring-1 ring-amber-700/60 font-black'
-                  : 'text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/90'
-              }`}
-              title="تقرير الحسابات المزدوج: دولار ($) وليرة سورية (ل.س) وسعر الصرف"
-            >
-              <Coins
-                className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${
-                  activeTab === 'dual_currency' ? 'text-white' : 'text-amber-600'
-                }`}
-              />
-              <span className="hidden sm:inline">حسابات العملتين ($ / ل.س) 💱</span>
-              <span className="sm:hidden">العملتين ($ / ل.س)</span>
+              <span className="hidden sm:inline">الأرباح والخسائر</span>
+              <span className="sm:hidden">الأرباح والخسائر</span>
             </button>
           </nav>
 

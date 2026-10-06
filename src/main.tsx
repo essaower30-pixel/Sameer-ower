@@ -5,8 +5,8 @@ import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import './index.css';
 
 // Build / Modification Version identifier
-export const APP_BUILD_VERSION = 'workshop-v11-20261005';
-const ACTIVE_CACHE_NAME = 'workshop-cache-v11';
+export const APP_BUILD_VERSION = 'workshop-v12-20261006';
+const ACTIVE_CACHE_NAME = 'workshop-cache-v12-20261006';
 
 // 1. Automatic Old Cache Purge Mechanism after any modification / deployment
 if (typeof window !== 'undefined') {
@@ -37,6 +37,15 @@ if (typeof window !== 'undefined') {
 
 // 2. Register Service Worker with active update checking
 if ('serviceWorker' in navigator) {
+  // Automatically reload when a new service worker takes control so updates appear instantly
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
+  });
+
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js', { scope: '/' })
@@ -46,6 +55,16 @@ if ('serviceWorker' in navigator) {
         if (navigator.onLine && reg) {
           reg.update().catch(() => {});
         }
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          }
+        });
       })
       .catch((err) => console.debug('ServiceWorker registration info:', err));
 

@@ -15,7 +15,6 @@ import { Navbar, ActiveNavTab } from './components/Navbar';
 import { OrderCard } from './components/OrderCard';
 import { OrderFormModal } from './components/OrderFormModal';
 import { InvoiceModal } from './components/InvoiceModal';
-import { StatsCards } from './components/StatsCards';
 import { FinancesPage } from './components/FinancesPage';
 import { SuppliersPage } from './components/SuppliersPage';
 import { PurchaseInvoiceModal } from './components/PurchaseInvoiceModal';
@@ -30,6 +29,18 @@ import {
   Coins,
   ArrowLeftRight,
 } from 'lucide-react';
+
+function deduplicateById<T extends { id: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  const result: T[] = [];
+  for (const item of items) {
+    if (item && item.id && !seen.has(item.id)) {
+      seen.add(item.id);
+      result.push(item);
+    }
+  }
+  return result;
+}
 
 export default function App() {
   // Load settings from localStorage or fallback to defaults
@@ -54,10 +65,11 @@ export default function App() {
     try {
       const saved = localStorage.getItem('workshop_orders');
       if (saved) {
-        const parsed: CustomerOrder[] = JSON.parse(saved);
+        const parsed: CustomerOrder[] = deduplicateById(JSON.parse(saved));
         const hasSyp = parsed.some((o) => o.currency === 'ل.س');
         if (!hasSyp && INITIAL_ORDERS[2]) {
-          return [...parsed.map((o) => ({ ...o, currency: o.currency || '$' })), INITIAL_ORDERS[2]];
+          const withoutDup = parsed.filter((o) => o.id !== INITIAL_ORDERS[2].id);
+          return deduplicateById([...withoutDup.map((o) => ({ ...o, currency: o.currency || '$' })), INITIAL_ORDERS[2]]);
         }
         return parsed.map((o) => ({ ...o, currency: o.currency || '$' }));
       }
@@ -72,10 +84,11 @@ export default function App() {
     try {
       const saved = localStorage.getItem('workshop_purchases');
       if (saved) {
-        const parsed: SupplierPurchaseInvoice[] = JSON.parse(saved);
+        const parsed: SupplierPurchaseInvoice[] = deduplicateById(JSON.parse(saved));
         const hasSyp = parsed.some((p) => p.currency === 'ل.س');
         if (!hasSyp && INITIAL_PURCHASE_INVOICES[2]) {
-          return [...parsed.map((p) => ({ ...p, currency: p.currency || '$' })), INITIAL_PURCHASE_INVOICES[2]];
+          const withoutDup = parsed.filter((p) => p.id !== INITIAL_PURCHASE_INVOICES[2].id);
+          return deduplicateById([...withoutDup.map((p) => ({ ...p, currency: p.currency || '$' })), INITIAL_PURCHASE_INVOICES[2]]);
         }
         return parsed.map((p) => ({ ...p, currency: p.currency || '$' }));
       }
@@ -110,10 +123,11 @@ export default function App() {
     try {
       const saved = localStorage.getItem('workshop_expenses');
       if (saved) {
-        const parsed: WorkshopExpense[] = JSON.parse(saved);
+        const parsed: WorkshopExpense[] = deduplicateById(JSON.parse(saved));
         const hasSyp = parsed.some((e) => e.currency === 'ل.س');
         if (!hasSyp && INITIAL_EXPENSES[5]) {
-          return [...parsed.map((e) => ({ ...e, currency: e.currency || '$' })), INITIAL_EXPENSES[5]];
+          const withoutDup = parsed.filter((e) => e.id !== INITIAL_EXPENSES[5].id);
+          return deduplicateById([...withoutDup.map((e) => ({ ...e, currency: e.currency || '$' })), INITIAL_EXPENSES[5]]);
         }
         return parsed.map((e) => ({ ...e, currency: e.currency || '$' }));
       }
@@ -365,44 +379,6 @@ export default function App() {
         {/* Tab 1: Customers & Sales Invoices (الزبائن - فواتير البيع) */}
         {activeTab === 'orders' && (
           <div className="space-y-5 animate-in fade-in duration-200">
-            {/* Dual Currency Alert / Quick Navigation Banner */}
-            <div className="bg-gradient-to-r from-amber-500/10 via-amber-50/70 to-blue-50/40 border border-amber-300 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
-                  <Coins className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-2 flex-wrap">
-                    <span>نظام الحسابات المزدوج بالدولار ($) والليرة السورية (ل.س) 💱</span>
-                    <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-black">
-                      سعر الصرف: 1$ = {(settings.usdToSypRate || 14500).toLocaleString()} ل.س
-                    </span>
-                  </h4>
-                  <p className="text-xs text-slate-600 mt-1">
-                    يمكنك إصدار فواتير البيع أو فواتير المشتريات بالدولار أو بالليرة، مع تقارير منفصلة وموحدة للأرباح.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('dual_currency')}
-                  className="w-full sm:w-auto px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
-                >
-                  <Coins className="w-3.5 h-3.5" />
-                  <span>فتح تقرير العملتين ($ / ل.س) 📊</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Business Stats Cards (Executive Overview Separating Currencies) */}
-            <StatsCards
-              orders={orders}
-              currency={settings.currency}
-              onNavigateToFinances={() => setActiveTab('dual_currency')}
-            />
-
             {/* Filter, Search & Actions Bar */}
             <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
               {/* Search input */}

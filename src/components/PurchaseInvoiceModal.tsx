@@ -218,86 +218,49 @@ export const PurchaseInvoiceModal: React.FC<Props> = ({
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto font-['Cairo',sans-serif]">
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-right">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-slate-50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
-              <Package className="w-5 h-5" />
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-slate-200 bg-slate-50 gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+              <Package className="w-4 h-4" />
             </div>
-            <div>
-              <h2 className="font-bold text-slate-900 text-lg leading-none">
-                {initialInvoice ? 'تعديل فاتورة شراء خامات' : 'تسجيل فاتورة شراء جديدة من المورد'}
+            <div className="min-w-0">
+              <h2 className="font-bold text-slate-900 text-sm sm:text-base leading-tight truncate">
+                {initialInvoice ? 'تعديل فاتورة شراء خامات' : 'تسجيل فاتورة شراء من المورد'}
               </h2>
-              <p className="text-xs text-slate-500 mt-1">
-                خاص بنشاط الألمنيوم، الأكرديون، الزيبرا، الأباجورات والشتر
+              <p className="text-[11px] text-slate-500 truncate">
+                ألمنيوم • أكرديون • زيبرا • شتر
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 rounded-xl transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Small icon & compact dropdown */}
+            <div className="flex items-center gap-1 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1 text-xs shadow-2xs">
+              <Coins className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <select
+                value={invoiceCurrency}
+                onChange={(e) => setInvoiceCurrency(e.target.value)}
+                className="bg-transparent font-bold text-slate-800 text-xs focus:outline-hidden cursor-pointer"
+                title="عملة فاتورة الشراء"
+              >
+                <option value="$">دولار ($)</option>
+                <option value="ل.س">ليرة سورية (ل.س)</option>
+                <option value="د.أ">دينار (د.أ)</option>
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Modal Body Form */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-          {/* Prominent Currency Selector Bar */}
-          <div className="bg-gradient-to-r from-amber-500/10 via-amber-50 to-blue-50/50 p-3.5 rounded-xl border border-amber-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold shadow-xs">
-                <Coins className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="text-xs font-black text-slate-900 block">
-                  العملة المعتمدة لفاتورة الشراء:
-                </span>
-                <span className="text-[11px] text-slate-600">
-                  تُحسب أسعار المواد والمتبقي للمورد بهذه العملة
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5 w-full sm:w-auto">
-              <button
-                type="button"
-                onClick={() => setInvoiceCurrency('$')}
-                className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  invoiceCurrency === '$'
-                    ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-500/30'
-                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
-                }`}
-              >
-                <span>💵 بالدولار ($)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setInvoiceCurrency('ل.س')}
-                className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  invoiceCurrency === 'ل.س'
-                    ? 'bg-amber-600 text-white shadow-xs ring-2 ring-amber-500/30'
-                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
-                }`}
-              >
-                <span>🇸🇾 بالليرة السورية (ل.س)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setInvoiceCurrency('د.أ')}
-                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  invoiceCurrency === 'د.أ'
-                    ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-500/30'
-                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
-                }`}
-              >
-                <span>🇯🇴 بالدينار (د.أ)</span>
-              </button>
-            </div>
-          </div>
-
           {/* 1. Supplier & Invoice Info */}
           <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-200 space-y-4">
             <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">

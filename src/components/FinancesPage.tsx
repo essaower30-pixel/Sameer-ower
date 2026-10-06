@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   CustomerOrder,
   WorkshopSettings,
@@ -40,6 +40,14 @@ import {
   Save,
 } from 'lucide-react';
 
+export type FinanceViewTab =
+  | 'overview'
+  | 'dual_currency'
+  | 'sales_report'
+  | 'purchases_report'
+  | 'profit_loss'
+  | 'expenses';
+
 interface Props {
   orders: CustomerOrder[];
   expenses: WorkshopExpense[];
@@ -51,8 +59,6 @@ interface Props {
   onSaveSettings?: (settings: WorkshopSettings) => void;
   initialTab?: FinanceViewTab;
 }
-
-export type { FinanceViewTab };
 
 export const FinancesPage: React.FC<Props> = ({
   orders,
@@ -66,7 +72,7 @@ export const FinancesPage: React.FC<Props> = ({
   initialTab,
 }) => {
   // Active report tab
-  const [activeTab, setActiveTab] = useState<FinanceViewTab>(initialTab || 'overview');
+  const [activeTab, setActiveTab] = useState<FinanceViewTab>(initialTab || 'profit_loss');
 
   useEffect(() => {
     if (initialTab) {
@@ -145,6 +151,7 @@ export const FinancesPage: React.FC<Props> = ({
   // Unified in USD ($):
   const combinedSalesUSD = usdSales + (sypSales / rate);
   const combinedCostUSD = usdEffectiveCost + (sypEffectiveCost / rate);
+  const combinedPurchasesInUSD = usdPurchasesTotal + (sypPurchasesTotal / rate);
   const combinedExpensesUSD = usdExpensesTotal + (sypExpensesTotal / rate);
   const combinedNetProfitUSD = usdNetProfit + (sypNetProfit / rate);
   const combinedReceivablesUSD = usdReceivables + (sypReceivables / rate);
@@ -153,6 +160,7 @@ export const FinancesPage: React.FC<Props> = ({
   // Unified in SYP (ل.س):
   const combinedSalesSYP = sypSales + (usdSales * rate);
   const combinedCostSYP = sypEffectiveCost + (usdEffectiveCost * rate);
+  const combinedPurchasesInSYP = sypPurchasesTotal + (usdPurchasesTotal * rate);
   const combinedExpensesSYP = sypExpensesTotal + (usdExpensesTotal * rate);
   const combinedNetProfitSYP = sypNetProfit + (usdNetProfit * rate);
   const combinedReceivablesSYP = sypReceivables + (usdReceivables * rate);
@@ -281,59 +289,7 @@ export const FinancesPage: React.FC<Props> = ({
 
       {/* Navigation Filter Tabs for Financial Reports */}
       <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-xs flex flex-wrap items-center gap-1.5 text-xs font-bold">
-        <button
-          type="button"
-          onClick={() => setActiveTab('overview')}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition-all cursor-pointer ${
-            activeTab === 'overview'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <Scale className="w-4 h-4" />
-          <span>الميزانية والمركز المالي الشامل</span>
-        </button>
-
-        {/* Dual Currency Report Tab */}
-        <button
-          type="button"
-          onClick={() => setActiveTab('dual_currency')}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition-all cursor-pointer ${
-            activeTab === 'dual_currency'
-              ? 'bg-amber-600 text-white shadow-xs'
-              : 'text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/70'
-          }`}
-        >
-          <Coins className="w-4 h-4 text-amber-600" />
-          <span>تقرير العملتين ($ ول.س) وسعر الصرف 💱</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('sales_report')}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition-all cursor-pointer ${
-            activeTab === 'sales_report'
-              ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <Layers className="w-4 h-4 text-blue-400" />
-          <span>تقارير فواتير البيع للزبائن ({orders.length})</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('purchases_report')}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition-all cursor-pointer ${
-            activeTab === 'purchases_report'
-              ? 'bg-amber-600 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <Truck className="w-4 h-4 text-amber-400" />
-          <span>تقارير فواتير الشراء للموردين ({purchaseInvoices.length})</span>
-        </button>
-
+        {/* 1. Profit & Loss Tab */}
         <button
           type="button"
           onClick={() => setActiveTab('profit_loss')}
@@ -347,6 +303,35 @@ export const FinancesPage: React.FC<Props> = ({
           <span>قائمة الأرباح والخسائر (P&L)</span>
         </button>
 
+        {/* 2. Dual Currency Report Tab */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('dual_currency')}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition-all cursor-pointer ${
+            activeTab === 'dual_currency'
+              ? 'bg-amber-600 text-white shadow-xs'
+              : 'text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/70'
+          }`}
+        >
+          <Coins className="w-4 h-4 text-amber-600" />
+          <span>حسابات العملتين ($ ول.س) وسعر الصرف 💱</span>
+        </button>
+
+        {/* 3. Overall Balance & Financial Position */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('overview')}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition-all cursor-pointer ${
+            activeTab === 'overview'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <Scale className="w-4 h-4" />
+          <span>الميزانية والمركز المالي الشامل</span>
+        </button>
+
+        {/* 4. Expenses Tab */}
         <button
           type="button"
           onClick={() => setActiveTab('expenses')}
@@ -358,6 +343,34 @@ export const FinancesPage: React.FC<Props> = ({
         >
           <Receipt className="w-4 h-4 text-purple-400" />
           <span>المصاريف التشغيلية ({expenses.length})</span>
+        </button>
+
+        {/* 5. Sales Reports */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('sales_report')}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition-all cursor-pointer ${
+            activeTab === 'sales_report'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <Layers className="w-4 h-4 text-blue-400" />
+          <span>تقارير فواتير البيع للزبائن ({orders.length})</span>
+        </button>
+
+        {/* 6. Purchase Reports */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('purchases_report')}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition-all cursor-pointer ${
+            activeTab === 'purchases_report'
+              ? 'bg-amber-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <Truck className="w-4 h-4 text-amber-400" />
+          <span>تقارير فواتير الشراء للموردين ({purchaseInvoices.length})</span>
         </button>
       </div>
 
@@ -987,8 +1000,8 @@ export const FinancesPage: React.FC<Props> = ({
                     <p className="text-xs text-slate-400 text-center py-4">لا توجد فواتير مشتريات بالدولار</p>
                   ) : (
                     <div className="space-y-1.5 max-h-80 overflow-y-auto">
-                      {usdPurchases.map((p) => (
-                        <div key={p.id} className="p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs flex justify-between items-center">
+                      {usdPurchases.map((p, idx) => (
+                        <div key={`${p.id}-${idx}`} className="p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs flex justify-between items-center">
                           <div>
                             <span className="font-bold text-slate-800 block">{p.supplierName}</span>
                             <span className="text-[10px] text-slate-400 font-mono">#{p.invoiceNumber} • {p.invoiceDate}</span>
@@ -1016,8 +1029,8 @@ export const FinancesPage: React.FC<Props> = ({
                     <p className="text-xs text-slate-400 text-center py-4">لا توجد فواتير مشتريات بالليرة السورية</p>
                   ) : (
                     <div className="space-y-1.5 max-h-80 overflow-y-auto">
-                      {sypPurchases.map((p) => (
-                        <div key={p.id} className="p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs flex justify-between items-center">
+                      {sypPurchases.map((p, idx) => (
+                        <div key={`${p.id}-${idx}`} className="p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs flex justify-between items-center">
                           <div>
                             <span className="font-bold text-slate-800 block">{p.supplierName}</span>
                             <span className="text-[10px] text-slate-400 font-mono">#{p.invoiceNumber} • {p.invoiceDate}</span>

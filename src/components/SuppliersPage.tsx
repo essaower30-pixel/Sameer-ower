@@ -170,7 +170,7 @@ export const SuppliersPage: React.FC<Props> = ({
       {/* 3. Invoices List / Cards Grid */}
       {filteredInvoices.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredInvoices.map((invoice) => {
+          {filteredInvoices.map((invoice, index) => {
             const statusInfo = PURCHASE_PAYMENT_STATUS_LABELS[invoice.paymentStatus] || {
               label: invoice.paymentStatus,
               color: 'text-slate-700',
@@ -183,7 +183,7 @@ export const SuppliersPage: React.FC<Props> = ({
 
             return (
               <div
-                key={invoice.id}
+                key={`${invoice.id}-${index}`}
                 className="bg-white rounded-2xl border border-slate-200/90 hover:border-amber-400/80 shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden"
               >
                 {/* Card Header */}

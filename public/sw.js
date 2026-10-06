@@ -1,4 +1,4 @@
-const CACHE_NAME = 'workshop-cache-v10';
+const CACHE_NAME = 'workshop-cache-v12-20261006';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.webmanifest',
@@ -190,14 +190,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static Assets (Scripts, CSS, Fonts, Images)
+  // Static Assets (Scripts, CSS, Fonts, Images) - Network First with Cache Fallback
   event.respondWith(
     (async () => {
-      // 1. Check exact cache match
-      const cached = await caches.match(event.request);
-      if (cached) return cached;
-
-      // 2. Fetch from network
+      // 1. Try fresh network response first
       try {
         const response = await fetch(event.request);
         if (
@@ -210,7 +206,10 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       } catch {
-        // 3. Fallback to cache without search query params
+        // 2. Fallback to cache when network fails or offline
+        const cached = await caches.match(event.request);
+        if (cached) return cached;
+
         const fallback = await caches.match(event.request, { ignoreSearch: true });
         if (fallback) return fallback;
 

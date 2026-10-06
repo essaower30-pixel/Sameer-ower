@@ -528,7 +528,6 @@ export const INITIAL_PURCHASE_INVOICES = [
     invoiceNumber: 'PUR-202',
     currency: '$',
     supplierName: 'مصنع الأمان للزجاج والدبل جلاس المقسى',
-    supplierName: 'مصنع الأمان للزجاج والدبل جلاس المقسى',
     supplierPhone: '0599445566',
     supplierAddress: 'طريق المطار - مجمع معامل الزجاج',
     category: 'glass' as const,
