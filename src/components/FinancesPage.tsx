@@ -35,6 +35,9 @@ import {
   Clock,
   Scale,
   DollarSign,
+  Coins,
+  ArrowLeftRight,
+  Save,
 } from 'lucide-react';
 
 interface Props {
@@ -45,9 +48,16 @@ interface Props {
   currency: string;
   onAddExpense: (expense: Omit<WorkshopExpense, 'id'>) => void;
   onDeleteExpense: (id: string) => void;
+  onSaveSettings?: (settings: WorkshopSettings) => void;
 }
 
-type FinanceViewTab = 'overview' | 'sales_report' | 'purchases_report' | 'profit_loss' | 'expenses';
+type FinanceViewTab =
+  | 'overview'
+  | 'dual_currency'
+  | 'sales_report'
+  | 'purchases_report'
+  | 'profit_loss'
+  | 'expenses';
 
 export const FinancesPage: React.FC<Props> = ({
   orders,
@@ -57,6 +67,7 @@ export const FinancesPage: React.FC<Props> = ({
   currency,
   onAddExpense,
   onDeleteExpense,
+  onSaveSettings,
 }) => {
   // Active report tab
   const [activeTab, setActiveTab] = useState<FinanceViewTab>('overview');
@@ -69,8 +80,81 @@ export const FinancesPage: React.FC<Props> = ({
   const [expenseTitle, setExpenseTitle] = useState('');
   const [expenseAmount, setExpenseAmount] = useState<number | ''>('');
   const [expenseCategory, setExpenseCategory] = useState<ExpenseCategory>('rent');
+  const [expenseCurrency, setExpenseCurrency] = useState<string>(currency || settings.currency || '$');
   const [expenseDate, setExpenseDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [expenseNotes, setExpenseNotes] = useState('');
+
+  // Dual Currency & Exchange Rate State
+  const [exchangeRate, setExchangeRate] = useState<number>(settings.usdToSypRate || 14500);
+  const [rateSavedNotice, setRateSavedNotice] = useState(false);
+  const [combinedCurrencyUnit, setCombinedCurrencyUnit] = useState<'$' | 'ل.س'>('$');
+  const [dualViewSubTab, setDualViewSubTab] = useState<'summary' | 'orders' | 'purchases' | 'expenses'>('summary');
+
+  const handleSaveRateToSettings = () => {
+    if (onSaveSettings) {
+      onSaveSettings({ ...settings, usdToSypRate: exchangeRate });
+      setRateSavedNotice(true);
+      setTimeout(() => setRateSavedNotice(false), 3000);
+    }
+  };
+
+  // Helper to determine the currency of each record
+  const getOrderCurrency = (o: CustomerOrder) => o.currency || currency || settings.currency || '$';
+  const getPurchaseCurrency = (p: SupplierPurchaseInvoice) => p.currency || currency || settings.currency || '$';
+  const getExpenseCurrency = (e: WorkshopExpense) => e.currency || currency || settings.currency || '$';
+
+  // ── USD ($) Calculations ──────────────────────────────────────
+  const usdOrders = orders.filter((o) => getOrderCurrency(o) === '$');
+  const usdPurchases = purchaseInvoices.filter((p) => getPurchaseCurrency(p) === '$');
+  const usdExpenses = expenses.filter((e) => getExpenseCurrency(e) === '$');
+
+  const usdSales = usdOrders.reduce((sum, o) => sum + (o.finalSellingPrice || 0), 0);
+  const usdDeposits = usdOrders.reduce((sum, o) => sum + (o.deposit || 0), 0);
+  const usdReceivables = usdOrders.reduce((sum, o) => sum + (o.remainingBalance || 0), 0);
+  const usdPurchasesTotal = usdPurchases.reduce((sum, p) => sum + (p.totalAmount || 0), 0);
+  const usdPaidToSuppliers = usdPurchases.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+  const usdPayablesToSuppliers = usdPurchases.reduce((sum, p) => sum + (p.remainingAmount || 0), 0);
+  const usdExpensesTotal = usdExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const usdDirectCost = usdOrders.reduce((sum, o) => sum + (o.totalCost || 0), 0);
+  const usdEffectiveCost = usdPurchasesTotal > 0 ? usdPurchasesTotal : usdDirectCost;
+  const usdGrossProfit = usdSales - usdEffectiveCost;
+  const usdNetProfit = usdGrossProfit - usdExpensesTotal;
+
+  // ── SYP (ل.س) Calculations ────────────────────────────────────
+  const sypOrders = orders.filter((o) => getOrderCurrency(o) === 'ل.س');
+  const sypPurchases = purchaseInvoices.filter((p) => getPurchaseCurrency(p) === 'ل.س');
+  const sypExpenses = expenses.filter((e) => getExpenseCurrency(e) === 'ل.س');
+
+  const sypSales = sypOrders.reduce((sum, o) => sum + (o.finalSellingPrice || 0), 0);
+  const sypDeposits = sypOrders.reduce((sum, o) => sum + (o.deposit || 0), 0);
+  const sypReceivables = sypOrders.reduce((sum, o) => sum + (o.remainingBalance || 0), 0);
+  const sypPurchasesTotal = sypPurchases.reduce((sum, p) => sum + (p.totalAmount || 0), 0);
+  const sypPaidToSuppliers = sypPurchases.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+  const sypPayablesToSuppliers = sypPurchases.reduce((sum, p) => sum + (p.remainingAmount || 0), 0);
+  const sypExpensesTotal = sypExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const sypDirectCost = sypOrders.reduce((sum, o) => sum + (o.totalCost || 0), 0);
+  const sypEffectiveCost = sypPurchasesTotal > 0 ? sypPurchasesTotal : sypDirectCost;
+  const sypGrossProfit = sypSales - sypEffectiveCost;
+  const sypNetProfit = sypGrossProfit - sypExpensesTotal;
+
+  // ── Combined Conversion Calculations (وفق سعر الصرف) ───────────
+  const rate = Math.max(1, exchangeRate || 14500);
+
+  // Unified in USD ($):
+  const combinedSalesUSD = usdSales + (sypSales / rate);
+  const combinedCostUSD = usdEffectiveCost + (sypEffectiveCost / rate);
+  const combinedExpensesUSD = usdExpensesTotal + (sypExpensesTotal / rate);
+  const combinedNetProfitUSD = usdNetProfit + (sypNetProfit / rate);
+  const combinedReceivablesUSD = usdReceivables + (sypReceivables / rate);
+  const combinedPayablesUSD = usdPayablesToSuppliers + (sypPayablesToSuppliers / rate);
+
+  // Unified in SYP (ل.س):
+  const combinedSalesSYP = sypSales + (usdSales * rate);
+  const combinedCostSYP = sypEffectiveCost + (usdEffectiveCost * rate);
+  const combinedExpensesSYP = sypExpensesTotal + (usdExpensesTotal * rate);
+  const combinedNetProfitSYP = sypNetProfit + (usdNetProfit * rate);
+  const combinedReceivablesSYP = sypReceivables + (usdReceivables * rate);
+  const combinedPayablesSYP = sypPayablesToSuppliers + (usdPayablesToSuppliers * rate);
 
   // 1. Sales Calculations (فواتير البيع للزبائن)
   const totalSales = orders.reduce((sum, o) => sum + (o.finalSellingPrice || 0), 0);
@@ -135,6 +219,7 @@ export const FinancesPage: React.FC<Props> = ({
       title: expenseTitle.trim(),
       amount: Number(expenseAmount),
       category: expenseCategory,
+      currency: expenseCurrency,
       date: expenseDate,
       notes: expenseNotes.trim(),
     });
@@ -207,6 +292,20 @@ export const FinancesPage: React.FC<Props> = ({
           <span>الميزانية والمركز المالي الشامل</span>
         </button>
 
+        {/* Dual Currency Report Tab */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('dual_currency')}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition-all cursor-pointer ${
+            activeTab === 'dual_currency'
+              ? 'bg-amber-600 text-white shadow-xs'
+              : 'text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/70'
+          }`}
+        >
+          <Coins className="w-4 h-4 text-amber-600" />
+          <span>تقرير العملتين ($ ول.س) وسعر الصرف 💱</span>
+        </button>
+
         <button
           type="button"
           onClick={() => setActiveTab('sales_report')}
@@ -259,6 +358,739 @@ export const FinancesPage: React.FC<Props> = ({
           <span>المصاريف التشغيلية ({expenses.length})</span>
         </button>
       </div>
+
+      {/* ── OVERVIEW SNAPSHOT BANNER FOR DUAL CURRENCIES ── */}
+      {activeTab === 'overview' && (usdSales > 0 || sypSales > 0 || usdPurchasesTotal > 0 || sypPurchasesTotal > 0) && (
+        <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-300 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-xs">
+              <Coins className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2">
+                <span>نظام الحسابات المزدوج بالدولار الأمريكي ($) والليرة السورية (ل.س)</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-bold">1$ = {rate.toLocaleString()} ل.س</span>
+              </h4>
+              <p className="text-xs text-slate-600 mt-1">
+                مبيعات الدولار: <strong className="font-mono text-emerald-700">{maskValue(formatCurrency(usdSales, '$'))}</strong> ({usdOrders.length} فاتورة) • مبيعات الليرة: <strong className="font-mono text-blue-700">{maskValue(formatCurrency(sypSales, 'ل.س'))}</strong> ({sypOrders.length} فاتورة)
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('dual_currency')}
+            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+          >
+            <Coins className="w-3.5 h-3.5" />
+            <span>عرض التقرير المالي المزدوج الشامل 💱</span>
+          </button>
+        </div>
+      )}
+
+      {/* ── SECTION: DEDICATED DUAL CURRENCY & EXCHANGE RATE REPORT ── */}
+      {activeTab === 'dual_currency' && (
+        <div className="space-y-6">
+          {/* Header & Exchange Rate Controls */}
+          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center shadow-md">
+                  <Coins className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900">
+                    تقرير الحسابات المزدوج: الدولار الأمريكي ($) والليرة السورية (ل.س)
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    فصل تفصيلي للمبيعات والمشتريات والمصاريف والأرباح لكل عملة، مع المحصلة الإجمالية الموحدة وفق سعر الصرف.
+                  </p>
+                </div>
+              </div>
+
+              {/* Print Dual Statement */}
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer self-start sm:self-auto"
+              >
+                <Printer className="w-4 h-4" />
+                <span>طباعة التقرير المزدوج</span>
+              </button>
+            </div>
+
+            {/* Live Exchange Rate Setting Box */}
+            <div className="p-4 bg-gradient-to-r from-amber-50/80 via-white to-amber-50/50 rounded-xl border border-amber-200/90 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1">
+                    <ArrowLeftRight className="w-4 h-4 text-amber-600" />
+                    <span>سعر صرف الدولار مقابل الليرة السورية اليوم:</span>
+                  </span>
+                  {rateSavedNotice && (
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md animate-in fade-in">
+                      تم حفظ سعر الصرف كافتراضي ✅
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  تغيير هذا السعر يعيد حساب إجمالي الميزانية وصافي الأرباح الموحدة تلقائياً وفوراً.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                <div className="flex items-center bg-white border border-amber-300 rounded-xl px-3 py-1.5 shadow-2xs font-mono">
+                  <span className="text-xs font-bold text-amber-800 ml-2">1$ =</span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="50"
+                    value={exchangeRate}
+                    onChange={(e) => setExchangeRate(Number(e.target.value) || 1)}
+                    className="w-24 text-sm font-black text-slate-900 focus:outline-hidden text-center bg-transparent"
+                  />
+                  <span className="text-xs font-bold text-amber-800 mr-2">ل.س</span>
+                </div>
+
+                {onSaveSettings && (
+                  <button
+                    type="button"
+                    onClick={handleSaveRateToSettings}
+                    className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition shadow-2xs flex items-center gap-1 cursor-pointer"
+                    title="حفظ هذا السعر في إعدادات الورشة بشكل دائم"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>حفظ كافتراضي</span>
+                  </button>
+                )}
+
+                {/* Switch Combined Display Currency */}
+                <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+                  <span className="text-[11px] text-slate-500 px-1 font-medium">عرض الموحد:</span>
+                  <button
+                    type="button"
+                    onClick={() => setCombinedCurrencyUnit('$')}
+                    className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                      combinedCurrencyUnit === '$'
+                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    بالدولار ($)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCombinedCurrencyUnit('ل.س')}
+                    className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                      combinedCurrencyUnit === 'ل.س'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    بالليرة (ل.س)
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 1. Side-by-Side Dual Currency Cards */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* ── USD ($) Card ── */}
+            <div className="bg-white rounded-2xl border-2 border-emerald-200 shadow-xs overflow-hidden flex flex-col justify-between">
+              <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border-b border-emerald-100 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shadow-xs font-mono">
+                    $
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-base">
+                      حسابات الدولار الأمريكي ($)
+                    </h4>
+                    <span className="text-xs text-emerald-800">
+                      إجمالي {usdOrders.length} فاتورة بيع • {usdPurchases.length} فاتورة مشتريات
+                    </span>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs font-mono border border-emerald-300">
+                  USD ($)
+                </span>
+              </div>
+
+              <div className="p-4 sm:p-5 space-y-4">
+                {/* Metrics Breakdown */}
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <span className="text-slate-500 block mb-0.5">مبيعات الزبائن ($):</span>
+                    <span className="text-base font-bold font-mono text-slate-900">
+                      {maskValue(formatCurrency(usdSales, '$'))}
+                    </span>
+                    <span className="text-[11px] text-slate-500 block mt-1">
+                      المقبوض: <strong className="text-emerald-700 font-mono">{maskValue(formatCurrency(usdDeposits, '$'))}</strong>
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200">
+                    <span className="text-amber-800 block mb-0.5">ديون متبقية على الزبائن ($):</span>
+                    <span className="text-base font-bold font-mono text-amber-900">
+                      {maskValue(formatCurrency(usdReceivables, '$'))}
+                    </span>
+                    <span className="text-[11px] text-amber-700 block mt-1">متبقي قيد التحصيل</span>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <span className="text-slate-500 block mb-0.5">مشتريات خامات ومواد ($):</span>
+                    <span className="text-base font-bold font-mono text-slate-900">
+                      {maskValue(formatCurrency(usdPurchasesTotal, '$'))}
+                    </span>
+                    <span className="text-[11px] text-slate-500 block mt-1">
+                      المسدد للموردين: <strong className="text-emerald-700 font-mono">{maskValue(formatCurrency(usdPaidToSuppliers, '$'))}</strong>
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-rose-50/60 rounded-xl border border-rose-200">
+                    <span className="text-rose-800 block mb-0.5">ديون باقية للموردين ($):</span>
+                    <span className="text-base font-bold font-mono text-rose-900">
+                      {maskValue(formatCurrency(usdPayablesToSuppliers, '$'))}
+                    </span>
+                    <span className="text-[11px] text-rose-700 block mt-1">ذمم آجل مطلوب سدادها</span>
+                  </div>
+                </div>
+
+                {/* Expenses in USD */}
+                <div className="flex items-center justify-between p-3 bg-purple-50/60 rounded-xl border border-purple-200 text-xs">
+                  <span className="text-purple-900 font-medium">المصاريف التشغيلية بالدولار:</span>
+                  <span className="font-mono font-bold text-purple-900 text-sm">
+                    {maskValue(formatCurrency(usdExpensesTotal, '$'))}
+                  </span>
+                </div>
+
+                {/* Net Profit in USD */}
+                <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-300 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-emerald-900 block">صافي أرباح الدولار (USD):</span>
+                    <span className="text-[11px] text-emerald-700">المبيعات - تكلفة المواد - المصاريف</span>
+                  </div>
+                  <span className="text-xl sm:text-2xl font-black font-mono text-emerald-700">
+                    {maskValue(formatCurrency(usdNetProfit, '$'))}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* ── SYP (ل.س) Card ── */}
+            <div className="bg-white rounded-2xl border-2 border-blue-200 shadow-xs overflow-hidden flex flex-col justify-between">
+              <div className="p-4 sm:p-5 bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent border-b border-blue-100 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-xs font-mono">
+                    ل.س
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-base">
+                      حسابات الليرة السورية (ل.س)
+                    </h4>
+                    <span className="text-xs text-blue-800">
+                      إجمالي {sypOrders.length} فاتورة بيع • {sypPurchases.length} فاتورة مشتريات
+                    </span>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 font-bold text-xs font-mono border border-blue-300">
+                  SYP (ل.س)
+                </span>
+              </div>
+
+              <div className="p-4 sm:p-5 space-y-4">
+                {/* Metrics Breakdown */}
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <span className="text-slate-500 block mb-0.5">مبيعات الزبائن (ل.س):</span>
+                    <span className="text-base font-bold font-mono text-slate-900">
+                      {maskValue(formatCurrency(sypSales, 'ل.س'))}
+                    </span>
+                    <span className="text-[11px] text-slate-500 block mt-1">
+                      المقبوض: <strong className="text-emerald-700 font-mono">{maskValue(formatCurrency(sypDeposits, 'ل.س'))}</strong>
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200">
+                    <span className="text-amber-800 block mb-0.5">ديون متبقية على الزبائن (ل.س):</span>
+                    <span className="text-base font-bold font-mono text-amber-900">
+                      {maskValue(formatCurrency(sypReceivables, 'ل.س'))}
+                    </span>
+                    <span className="text-[11px] text-amber-700 block mt-1">متبقي قيد التحصيل</span>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <span className="text-slate-500 block mb-0.5">مشتريات خامات ومواد (ل.س):</span>
+                    <span className="text-base font-bold font-mono text-slate-900">
+                      {maskValue(formatCurrency(sypPurchasesTotal, 'ل.س'))}
+                    </span>
+                    <span className="text-[11px] text-slate-500 block mt-1">
+                      المسدد للموردين: <strong className="text-emerald-700 font-mono">{maskValue(formatCurrency(sypPaidToSuppliers, 'ل.س'))}</strong>
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-rose-50/60 rounded-xl border border-rose-200">
+                    <span className="text-rose-800 block mb-0.5">ديون باقية للموردين (ل.س):</span>
+                    <span className="text-base font-bold font-mono text-rose-900">
+                      {maskValue(formatCurrency(sypPayablesToSuppliers, 'ل.س'))}
+                    </span>
+                    <span className="text-[11px] text-rose-700 block mt-1">ذمم آجل مطلوب سدادها</span>
+                  </div>
+                </div>
+
+                {/* Expenses in SYP */}
+                <div className="flex items-center justify-between p-3 bg-purple-50/60 rounded-xl border border-purple-200 text-xs">
+                  <span className="text-purple-900 font-medium">المصاريف التشغيلية بالليرة:</span>
+                  <span className="font-mono font-bold text-purple-900 text-sm">
+                    {maskValue(formatCurrency(sypExpensesTotal, 'ل.س'))}
+                  </span>
+                </div>
+
+                {/* Net Profit in SYP */}
+                <div className="p-4 bg-blue-50 rounded-xl border border-blue-300 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-blue-900 block">صافي أرباح الليرة (SYP):</span>
+                    <span className="text-[11px] text-blue-700">المبيعات - تكلفة المواد - المصاريف</span>
+                  </div>
+                  <span className="text-xl sm:text-2xl font-black font-mono text-blue-700">
+                    {maskValue(formatCurrency(sypNetProfit, 'ل.س'))}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Combined Unified Summary Box (المحصلة الموحدة الشاملة) */}
+          <div className="bg-slate-900 text-white rounded-2xl p-5 sm:p-6 shadow-xl space-y-5 border border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 flex items-center justify-center font-black">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2">
+                    <span>المحصلة المالية الموحدة للورشة ككل</span>
+                    <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-slate-800 text-amber-400 border border-slate-700">
+                      محولة {combinedCurrencyUnit === '$' ? 'بالدولار الأمريكي ($)' : 'بالليرة السورية (ل.س)'}
+                    </span>
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    تم دمج أرباح ومبيعات ومصاريف العملتين معاً وفق سعر الصرف (1$ = {rate.toLocaleString()} ل.س)
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 self-end sm:self-auto text-xs font-bold bg-slate-800 p-1 rounded-xl border border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setCombinedCurrencyUnit('$')}
+                  className={`px-3 py-1.5 rounded-lg transition-all ${
+                    combinedCurrencyUnit === '$' ? 'bg-emerald-500 text-slate-950 font-black' : 'text-slate-300'
+                  }`}
+                >
+                  بالدولار ($)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCombinedCurrencyUnit('ل.س')}
+                  className={`px-3 py-1.5 rounded-lg transition-all ${
+                    combinedCurrencyUnit === 'ل.س' ? 'bg-blue-500 text-white font-black' : 'text-slate-300'
+                  }`}
+                >
+                  بالليرة (ل.س)
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Total Combined Sales */}
+              <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700/80">
+                <span className="text-xs text-slate-400 block mb-1">إجمالي المبيعات الموحدة:</span>
+                <span className="text-xl sm:text-2xl font-black font-mono text-white">
+                  {maskValue(
+                    formatCurrency(
+                      combinedCurrencyUnit === '$' ? combinedSalesUSD : combinedSalesSYP,
+                      combinedCurrencyUnit
+                    )
+                  )}
+                </span>
+                <span className="text-[11px] text-slate-500 block mt-1">مبيعات الزبائن مدمجة</span>
+              </div>
+
+              {/* Total Combined Cost */}
+              <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700/80">
+                <span className="text-xs text-slate-400 block mb-1">إجمالي المشتريات والتكاليف:</span>
+                <span className="text-xl sm:text-2xl font-black font-mono text-amber-400">
+                  {maskValue(
+                    formatCurrency(
+                      combinedCurrencyUnit === '$' ? combinedCostUSD : combinedCostSYP,
+                      combinedCurrencyUnit
+                    )
+                  )}
+                </span>
+                <span className="text-[11px] text-slate-500 block mt-1">خامات الألمنيوم والزجاج والشتر</span>
+              </div>
+
+              {/* Total Combined Expenses */}
+              <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700/80">
+                <span className="text-xs text-slate-400 block mb-1">المصاريف التشغيلية الموحدة:</span>
+                <span className="text-xl sm:text-2xl font-black font-mono text-purple-400">
+                  {maskValue(
+                    formatCurrency(
+                      combinedCurrencyUnit === '$' ? combinedExpensesUSD : combinedExpensesSYP,
+                      combinedCurrencyUnit
+                    )
+                  )}
+                </span>
+                <span className="text-[11px] text-slate-500 block mt-1">رواتب، إيجار، عُدد ونثريات</span>
+              </div>
+
+              {/* Total Combined Net Profit */}
+              <div className="bg-emerald-950/80 p-4 rounded-xl border-2 border-emerald-500/80 shadow-md">
+                <span className="text-xs font-bold text-emerald-400 block mb-1">
+                  صافي الربح الموحد النهائي:
+                </span>
+                <span className="text-2xl sm:text-3xl font-black font-mono text-emerald-300">
+                  {maskValue(
+                    formatCurrency(
+                      combinedCurrencyUnit === '$' ? combinedNetProfitUSD : combinedNetProfitSYP,
+                      combinedCurrencyUnit
+                    )
+                  )}
+                </span>
+                <span className="text-[11px] text-emerald-400 block mt-1">
+                  الربح الحقيقي بعد خصم كل شيء
+                </span>
+              </div>
+            </div>
+
+            {/* Receivables & Payables Combined Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
+              <div className="p-3 bg-slate-800/60 rounded-xl border border-slate-700 flex items-center justify-between">
+                <span className="text-slate-400">صافي ديون الزبائن للتحصيل (الموحدة):</span>
+                <span className="font-mono font-bold text-amber-400 text-sm">
+                  {maskValue(
+                    formatCurrency(
+                      combinedCurrencyUnit === '$' ? combinedReceivablesUSD : combinedReceivablesSYP,
+                      combinedCurrencyUnit
+                    )
+                  )}
+                </span>
+              </div>
+
+              <div className="p-3 bg-slate-800/60 rounded-xl border border-slate-700 flex items-center justify-between">
+                <span className="text-slate-400">صافي ديون الموردين للسداد (الموحدة):</span>
+                <span className="font-mono font-bold text-rose-400 text-sm">
+                  {maskValue(
+                    formatCurrency(
+                      combinedCurrencyUnit === '$' ? combinedPayablesUSD : combinedPayablesSYP,
+                      combinedCurrencyUnit
+                    )
+                  )}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Detail Tables by Currency */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                <FileSpreadsheet className="w-4 h-4 text-blue-600" />
+                <span>سجل الفواتير والمعاملات المفصّل لكل عملة</span>
+              </h4>
+
+              <div className="flex items-center gap-1.5 text-xs font-bold bg-slate-100 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setDualViewSubTab('summary')}
+                  className={`px-3 py-1 rounded-lg transition ${
+                    dualViewSubTab === 'summary' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600'
+                  }`}
+                >
+                  مقارنة العملتين
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDualViewSubTab('orders')}
+                  className={`px-3 py-1 rounded-lg transition ${
+                    dualViewSubTab === 'orders' ? 'bg-white text-blue-700 shadow-2xs' : 'text-slate-600'
+                  }`}
+                >
+                  فواتير الزبائن (${usdOrders.length} / ل.س {sypOrders.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDualViewSubTab('purchases')}
+                  className={`px-3 py-1 rounded-lg transition ${
+                    dualViewSubTab === 'purchases' ? 'bg-white text-amber-700 shadow-2xs' : 'text-slate-600'
+                  }`}
+                >
+                  الموردين (${usdPurchases.length} / ل.س {sypPurchases.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDualViewSubTab('expenses')}
+                  className={`px-3 py-1 rounded-lg transition ${
+                    dualViewSubTab === 'expenses' ? 'bg-white text-purple-700 shadow-2xs' : 'text-slate-600'
+                  }`}
+                >
+                  المصاريف (${usdExpenses.length} / ل.س {sypExpenses.length})
+                </button>
+              </div>
+            </div>
+
+            {/* SubTab 1: Comparative Summary Table */}
+            {dualViewSubTab === 'summary' && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-right text-xs">
+                  <thead className="bg-slate-50 text-slate-700 border-b border-slate-200">
+                    <tr>
+                      <th className="p-3 font-bold">البند المالي</th>
+                      <th className="p-3 font-bold text-emerald-800">حسابات الدولار ($)</th>
+                      <th className="p-3 font-bold text-blue-800">حسابات الليرة السورية (ل.س)</th>
+                      <th className="p-3 font-bold text-amber-900">المجموع الموحد ({combinedCurrencyUnit})</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    <tr className="hover:bg-slate-50/50">
+                      <td className="p-3 font-bold text-slate-800">فواتير مبيعات الزبائن</td>
+                      <td className="p-3 font-mono font-bold text-emerald-700">{formatCurrency(usdSales, '$')}</td>
+                      <td className="p-3 font-mono font-bold text-blue-700">{formatCurrency(sypSales, 'ل.س')}</td>
+                      <td className="p-3 font-mono font-black text-slate-900">
+                        {formatCurrency(combinedCurrencyUnit === '$' ? combinedSalesUSD : combinedSalesSYP, combinedCurrencyUnit)}
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-slate-50/50">
+                      <td className="p-3 font-bold text-slate-800">المقبوضات والعربونات المستلمة</td>
+                      <td className="p-3 font-mono text-emerald-700">{formatCurrency(usdDeposits, '$')}</td>
+                      <td className="p-3 font-mono text-blue-700">{formatCurrency(sypDeposits, 'ل.س')}</td>
+                      <td className="p-3 font-mono font-bold text-slate-900">
+                        {formatCurrency(combinedCurrencyUnit === '$' ? (usdDeposits + sypDeposits / rate) : (sypDeposits + usdDeposits * rate), combinedCurrencyUnit)}
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-slate-50/50">
+                      <td className="p-3 font-bold text-slate-800">المتبقي على الزبائن (ديون الورشة)</td>
+                      <td className="p-3 font-mono text-amber-700">{formatCurrency(usdReceivables, '$')}</td>
+                      <td className="p-3 font-mono text-amber-700">{formatCurrency(sypReceivables, 'ل.س')}</td>
+                      <td className="p-3 font-mono font-bold text-amber-900">
+                        {formatCurrency(combinedCurrencyUnit === '$' ? combinedReceivablesUSD : combinedReceivablesSYP, combinedCurrencyUnit)}
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-slate-50/50">
+                      <td className="p-3 font-bold text-slate-800">مشتريات خامات الموردين</td>
+                      <td className="p-3 font-mono text-rose-700">{formatCurrency(usdPurchasesTotal, '$')}</td>
+                      <td className="p-3 font-mono text-rose-700">{formatCurrency(sypPurchasesTotal, 'ل.س')}</td>
+                      <td className="p-3 font-mono font-bold text-rose-900">
+                        {formatCurrency(combinedCurrencyUnit === '$' ? combinedPurchasesInUSD : combinedPurchasesInSYP, combinedCurrencyUnit)}
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-slate-50/50">
+                      <td className="p-3 font-bold text-slate-800">المصاريف التشغيلية</td>
+                      <td className="p-3 font-mono text-purple-700">{formatCurrency(usdExpensesTotal, '$')}</td>
+                      <td className="p-3 font-mono text-purple-700">{formatCurrency(sypExpensesTotal, 'ل.س')}</td>
+                      <td className="p-3 font-mono font-bold text-purple-900">
+                        {formatCurrency(combinedCurrencyUnit === '$' ? combinedExpensesUSD : combinedExpensesSYP, combinedCurrencyUnit)}
+                      </td>
+                    </tr>
+                    <tr className="bg-emerald-50/80 font-black">
+                      <td className="p-3 text-emerald-950 font-bold">صافي الأرباح المحققة (Net Profit)</td>
+                      <td className="p-3 font-mono text-emerald-800 text-sm">{formatCurrency(usdNetProfit, '$')}</td>
+                      <td className="p-3 font-mono text-blue-800 text-sm">{formatCurrency(sypNetProfit, 'ل.س')}</td>
+                      <td className="p-3 font-mono text-emerald-950 text-base">
+                        {formatCurrency(combinedCurrencyUnit === '$' ? combinedNetProfitUSD : combinedNetProfitSYP, combinedCurrencyUnit)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* SubTab 2: Orders Details */}
+            {dualViewSubTab === 'orders' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* USD Orders */}
+                <div className="border border-slate-200 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span className="font-bold text-xs text-slate-800 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      فواتير الزبائن بالدولار ({usdOrders.length})
+                    </span>
+                    <span className="font-mono text-xs font-bold text-emerald-700">{formatCurrency(usdSales, '$')}</span>
+                  </div>
+                  {usdOrders.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-4">لا توجد فواتير بيع بالدولار حالياً</p>
+                  ) : (
+                    <div className="space-y-1.5 max-h-80 overflow-y-auto">
+                      {usdOrders.map((o) => (
+                        <div key={o.id} className="p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs flex justify-between items-center">
+                          <div>
+                            <span className="font-bold text-slate-800 block">{o.customerName}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">#{o.orderNumber} • {o.items.length} بنود</span>
+                          </div>
+                          <div className="text-left font-mono">
+                            <span className="font-bold text-slate-900 block">{formatCurrency(o.finalSellingPrice, '$')}</span>
+                            <span className="text-[10px] text-slate-500">متبقي: {formatCurrency(o.remainingBalance, '$')}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* SYP Orders */}
+                <div className="border border-slate-200 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span className="font-bold text-xs text-slate-800 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                      فواتير الزبائن بالليرة السورية ({sypOrders.length})
+                    </span>
+                    <span className="font-mono text-xs font-bold text-blue-700">{formatCurrency(sypSales, 'ل.س')}</span>
+                  </div>
+                  {sypOrders.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-4">لا توجد فواتير بيع بالليرة السورية حالياً</p>
+                  ) : (
+                    <div className="space-y-1.5 max-h-80 overflow-y-auto">
+                      {sypOrders.map((o) => (
+                        <div key={o.id} className="p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs flex justify-between items-center">
+                          <div>
+                            <span className="font-bold text-slate-800 block">{o.customerName}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">#{o.orderNumber} • {o.items.length} بنود</span>
+                          </div>
+                          <div className="text-left font-mono">
+                            <span className="font-bold text-slate-900 block">{formatCurrency(o.finalSellingPrice, 'ل.س')}</span>
+                            <span className="text-[10px] text-slate-500">متبقي: {formatCurrency(o.remainingBalance, 'ل.س')}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* SubTab 3: Purchases Details */}
+            {dualViewSubTab === 'purchases' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* USD Purchases */}
+                <div className="border border-slate-200 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span className="font-bold text-xs text-slate-800 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      مشتريات الموردين بالدولار ({usdPurchases.length})
+                    </span>
+                    <span className="font-mono text-xs font-bold text-rose-700">{formatCurrency(usdPurchasesTotal, '$')}</span>
+                  </div>
+                  {usdPurchases.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-4">لا توجد فواتير مشتريات بالدولار</p>
+                  ) : (
+                    <div className="space-y-1.5 max-h-80 overflow-y-auto">
+                      {usdPurchases.map((p) => (
+                        <div key={p.id} className="p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs flex justify-between items-center">
+                          <div>
+                            <span className="font-bold text-slate-800 block">{p.supplierName}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">#{p.invoiceNumber} • {p.invoiceDate}</span>
+                          </div>
+                          <div className="text-left font-mono">
+                            <span className="font-bold text-slate-900 block">{formatCurrency(p.totalAmount, '$')}</span>
+                            <span className="text-[10px] text-slate-500">مسدد: {formatCurrency(p.paidAmount, '$')}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* SYP Purchases */}
+                <div className="border border-slate-200 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span className="font-bold text-xs text-slate-800 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                      مشتريات الموردين بالليرة السورية ({sypPurchases.length})
+                    </span>
+                    <span className="font-mono text-xs font-bold text-rose-700">{formatCurrency(sypPurchasesTotal, 'ل.س')}</span>
+                  </div>
+                  {sypPurchases.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-4">لا توجد فواتير مشتريات بالليرة السورية</p>
+                  ) : (
+                    <div className="space-y-1.5 max-h-80 overflow-y-auto">
+                      {sypPurchases.map((p) => (
+                        <div key={p.id} className="p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs flex justify-between items-center">
+                          <div>
+                            <span className="font-bold text-slate-800 block">{p.supplierName}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">#{p.invoiceNumber} • {p.invoiceDate}</span>
+                          </div>
+                          <div className="text-left font-mono">
+                            <span className="font-bold text-slate-900 block">{formatCurrency(p.totalAmount, 'ل.س')}</span>
+                            <span className="text-[10px] text-slate-500">مسدد: {formatCurrency(p.paidAmount, 'ل.س')}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* SubTab 4: Expenses Details */}
+            {dualViewSubTab === 'expenses' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* USD Expenses */}
+                <div className="border border-slate-200 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span className="font-bold text-xs text-slate-800 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                      مصاريف بالدولار ({usdExpenses.length})
+                    </span>
+                    <span className="font-mono text-xs font-bold text-purple-700">{formatCurrency(usdExpensesTotal, '$')}</span>
+                  </div>
+                  {usdExpenses.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-4">لا توجد مصاريف بالدولار</p>
+                  ) : (
+                    <div className="space-y-1.5 max-h-80 overflow-y-auto">
+                      {usdExpenses.map((e) => (
+                        <div key={e.id} className="p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs flex justify-between items-center">
+                          <div>
+                            <span className="font-bold text-slate-800 block">{e.title}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">{e.date}</span>
+                          </div>
+                          <span className="font-bold font-mono text-purple-800">{formatCurrency(e.amount, '$')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* SYP Expenses */}
+                <div className="border border-slate-200 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span className="font-bold text-xs text-slate-800 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                      مصاريف بالليرة السورية ({sypExpenses.length})
+                    </span>
+                    <span className="font-mono text-xs font-bold text-purple-700">{formatCurrency(sypExpensesTotal, 'ل.س')}</span>
+                  </div>
+                  {sypExpenses.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-4">لا توجد مصاريف بالليرة السورية</p>
+                  ) : (
+                    <div className="space-y-1.5 max-h-80 overflow-y-auto">
+                      {sypExpenses.map((e) => (
+                        <div key={e.id} className="p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs flex justify-between items-center">
+                          <div>
+                            <span className="font-bold text-slate-800 block">{e.title}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">{e.date}</span>
+                          </div>
+                          <span className="font-bold font-mono text-purple-800">{formatCurrency(e.amount, 'ل.س')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* SECTION 1: REPORT OF SALES INVOICES (تقارير فواتير البيع - تم نقلها من صفحة الزبائن) */}
       {(activeTab === 'overview' || activeTab === 'sales_report') && (
@@ -765,7 +1597,7 @@ export const FinancesPage: React.FC<Props> = ({
 
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                    المبلغ ({currency}):
+                    المبلغ:
                   </label>
                   <input
                     type="number"
@@ -777,6 +1609,21 @@ export const FinancesPage: React.FC<Props> = ({
                     onChange={(e) => setExpenseAmount(e.target.value === '' ? '' : parseFloat(e.target.value))}
                     className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white font-mono font-bold"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                    عملة المصروف:
+                  </label>
+                  <select
+                    value={expenseCurrency}
+                    onChange={(e) => setExpenseCurrency(e.target.value)}
+                    className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white font-bold text-slate-800"
+                  >
+                    <option value="$">دولار ($)</option>
+                    <option value="ل.س">ليرة سورية (ل.س)</option>
+                    <option value="د.أ">دينار أردني (د.أ)</option>
+                  </select>
                 </div>
 
                 <div>
@@ -842,7 +1689,7 @@ export const FinancesPage: React.FC<Props> = ({
                     <th className="p-2.5 font-bold">التاريخ</th>
                     <th className="p-2.5 font-bold">بيان المصروف</th>
                     <th className="p-2.5 font-bold">التصنيف</th>
-                    <th className="p-2.5 font-bold">المبلغ ({currency})</th>
+                    <th className="p-2.5 font-bold">المبلغ والعملة</th>
                     <th className="p-2.5 font-bold">ملاحظات</th>
                     <th className="p-2.5 font-bold text-center">إجراء</th>
                   </tr>
@@ -858,7 +1705,7 @@ export const FinancesPage: React.FC<Props> = ({
                         </span>
                       </td>
                       <td className="p-2.5 font-bold font-mono text-amber-700">
-                        {maskValue(formatCurrency(exp.amount, currency))}
+                        {maskValue(formatCurrency(exp.amount, exp.currency || currency))}
                       </td>
                       <td className="p-2.5 text-slate-500 max-w-xs truncate">{exp.notes || '-'}</td>
                       <td className="p-2.5 text-center">

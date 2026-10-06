@@ -10,6 +10,9 @@ interface Props {
 }
 
 export const StatsCards: React.FC<Props> = ({ orders, currency, onNavigateToFinances }) => {
+  const distinctCurrencies = Array.from(new Set(orders.map((o) => o.currency || currency)));
+  const hasMultipleCurrencies = distinctCurrencies.length > 1;
+
   const totalSales = orders.reduce((sum, o) => sum + (o.finalSellingPrice || 0), 0);
   const totalRemaining = orders.reduce((sum, o) => sum + (o.remainingBalance || 0), 0);
   const totalCollected = orders.reduce((sum, o) => sum + (o.deposit || 0), 0);
@@ -29,7 +32,20 @@ export const StatsCards: React.FC<Props> = ({ orders, currency, onNavigateToFina
             </div>
           </div>
           <div className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight font-mono">
-            {formatCurrency(totalSales, currency)}
+            {hasMultipleCurrencies ? (
+              <div className="space-y-0.5">
+                {distinctCurrencies.map((c) => {
+                  const s = orders.filter((o) => (o.currency || currency) === c).reduce((sum, o) => sum + (o.finalSellingPrice || 0), 0);
+                  return (
+                    <div key={c} className="text-base sm:text-lg font-black text-slate-900">
+                      {formatCurrency(s, c)}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              formatCurrency(totalSales, currency)
+            )}
           </div>
           <div className="mt-1 flex items-center text-xs text-slate-500 gap-1.5">
             <span>إجمالي {orders.length} فاتورة بيع مسجلة</span>
@@ -45,7 +61,20 @@ export const StatsCards: React.FC<Props> = ({ orders, currency, onNavigateToFina
             </div>
           </div>
           <div className="text-xl sm:text-2xl font-bold text-emerald-600 tracking-tight font-mono">
-            {formatCurrency(totalCollected, currency)}
+            {hasMultipleCurrencies ? (
+              <div className="space-y-0.5">
+                {distinctCurrencies.map((c) => {
+                  const dep = orders.filter((o) => (o.currency || currency) === c).reduce((sum, o) => sum + (o.deposit || 0), 0);
+                  return (
+                    <div key={c} className="text-base sm:text-lg font-black text-emerald-600">
+                      {formatCurrency(dep, c)}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              formatCurrency(totalCollected, currency)
+            )}
           </div>
           <div className="mt-1 flex items-center text-xs text-emerald-700 font-medium gap-1">
             <span>تم قبضها كدفعات أولى وعربونات</span>
@@ -61,7 +90,20 @@ export const StatsCards: React.FC<Props> = ({ orders, currency, onNavigateToFina
             </div>
           </div>
           <div className="text-xl sm:text-2xl font-bold text-amber-600 tracking-tight font-mono">
-            {formatCurrency(totalRemaining, currency)}
+            {hasMultipleCurrencies ? (
+              <div className="space-y-0.5">
+                {distinctCurrencies.map((c) => {
+                  const rem = orders.filter((o) => (o.currency || currency) === c).reduce((sum, o) => sum + (o.remainingBalance || 0), 0);
+                  return (
+                    <div key={c} className="text-base sm:text-lg font-black text-amber-600">
+                      {formatCurrency(rem, c)}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              formatCurrency(totalRemaining, currency)
+            )}
           </div>
           <div className="mt-1 flex items-center text-xs text-slate-500 gap-1">
             <span>تُستحق عند التسليم والتركيب</span>

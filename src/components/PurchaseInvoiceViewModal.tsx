@@ -28,9 +28,10 @@ interface Props {
 export const PurchaseInvoiceViewModal: React.FC<Props> = ({
   invoice,
   settings,
-  currency,
+  currency: defaultCurrency,
   onClose,
 }) => {
+  const currency = invoice.currency || defaultCurrency;
   const handlePrint = () => {
     window.print();
   };

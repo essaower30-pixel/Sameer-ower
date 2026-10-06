@@ -10,8 +10,9 @@ interface Props {
   onClose: () => void;
 }
 
-export const InvoiceModal: React.FC<Props> = ({ order, settings, currency, onClose }) => {
+export const InvoiceModal: React.FC<Props> = ({ order, settings, currency: defaultCurrency, onClose }) => {
   if (!order) return null;
+  const currency = order.currency || defaultCurrency;
 
   const handlePrint = () => {
     window.print();

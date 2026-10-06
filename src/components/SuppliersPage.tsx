@@ -179,6 +179,7 @@ export const SuppliersPage: React.FC<Props> = ({
             const catInfo = PURCHASE_CATEGORY_LABELS[invoice.category] || {
               label: 'مشتريات عامة',
             };
+            const invCurrency = invoice.currency || currency;
 
             return (
               <div
@@ -189,9 +190,12 @@ export const SuppliersPage: React.FC<Props> = ({
                 <div className="p-4 border-b border-slate-100 bg-gradient-to-b from-slate-50/70 to-white">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <div className="flex items-center gap-1.5 mb-1">
+                      <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                         <span className="font-mono text-xs font-black text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
                           {invoice.invoiceNumber}
+                        </span>
+                        <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-mono">
+                          {invCurrency}
                         </span>
                         <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
                           {catInfo.label}
@@ -244,7 +248,7 @@ export const SuppliersPage: React.FC<Props> = ({
                           {item.description}
                         </span>
                         <span className="font-mono text-slate-900 font-bold shrink-0">
-                          {item.quantity} {item.unit} • {formatCurrency(item.totalPrice, currency)}
+                          {item.quantity} {item.unit} • {formatCurrency(item.totalPrice, invCurrency)}
                         </span>
                       </div>
                     ))}
@@ -261,13 +265,13 @@ export const SuppliersPage: React.FC<Props> = ({
                   <div className="flex justify-between items-center py-0.5">
                     <span className="text-slate-500 font-bold">إجمالي الفاتورة:</span>
                     <span className="font-mono font-bold text-slate-900">
-                      {formatCurrency(invoice.totalAmount, currency)}
+                      {formatCurrency(invoice.totalAmount, invCurrency)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-0.5 text-emerald-800">
                     <span className="font-bold">المسدد:</span>
                     <span className="font-mono font-bold">
-                      {formatCurrency(invoice.paidAmount, currency)}
+                      {formatCurrency(invoice.paidAmount, invCurrency)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-0.5 font-bold">
@@ -279,7 +283,7 @@ export const SuppliersPage: React.FC<Props> = ({
                         invoice.remainingAmount > 0 ? 'text-rose-600' : 'text-emerald-700'
                       }`}
                     >
-                      {formatCurrency(invoice.remainingAmount, currency)}
+                      {formatCurrency(invoice.remainingAmount, invCurrency)}
                     </span>
                   </div>
                 </div>

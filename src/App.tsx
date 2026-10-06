@@ -461,6 +461,7 @@ export default function App() {
               currency={settings.currency}
               onAddExpense={handleAddExpense}
               onDeleteExpense={handleDeleteExpense}
+              onSaveSettings={(newSettings) => setSettings(newSettings)}
             />
           </div>
         )}

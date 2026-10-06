@@ -36,6 +36,7 @@ import {
   Truck,
   RefreshCw,
   Sparkles,
+  Coins,
 } from 'lucide-react';
 
 interface Props {
@@ -57,7 +58,7 @@ export const OrderFormModal: React.FC<Props> = ({
   initialItems,
   purchaseInvoices = [],
   settings,
-  currency,
+  currency: defaultCurrency,
 }) => {
   if (!isOpen) return null;
 
@@ -77,6 +78,10 @@ export const OrderFormModal: React.FC<Props> = ({
   const [status, setStatus] = useState<OrderStatus>(initialOrder?.status || 'in_progress');
   const [notes, setNotes] = useState(initialOrder?.notes || '');
   const [generateLinkedPurchase, setGenerateLinkedPurchase] = useState<boolean>(false);
+  const [orderCurrency, setOrderCurrency] = useState<string>(
+    initialOrder?.currency || defaultCurrency || settings.currency || '$'
+  );
+  const currency = orderCurrency;
 
   // Items State
   const [items, setItems] = useState<OrderItem[]>(() => {
@@ -334,11 +339,16 @@ export const OrderFormModal: React.FC<Props> = ({
       createdAt: initialOrder?.createdAt || new Date().toISOString(),
       syncedWithPurchases: items.some((i) => !!i.syncedPurchaseInfo),
       linkedPurchaseInvoiceId: initialOrder?.linkedPurchaseInvoiceId,
+      currency: orderCurrency,
+      exchangeRate: settings.usdToSypRate || 14500,
     };
 
     let linkedInvoice: SupplierPurchaseInvoice | undefined = undefined;
     if (generateLinkedPurchase) {
       linkedInvoice = generateLinkedPurchaseInvoice(orderData, settings);
+      if (linkedInvoice) {
+        linkedInvoice.currency = orderCurrency;
+      }
       orderData.linkedPurchaseInvoiceId = linkedInvoice.id;
     }
 
@@ -427,7 +437,7 @@ export const OrderFormModal: React.FC<Props> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-1">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
                   حالة الطلب:
@@ -455,6 +465,23 @@ export const OrderFormModal: React.FC<Props> = ({
                   onChange={(e) => setDeliveryDate(e.target.value)}
                   className="w-full text-xs sm:text-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
                 />
+              </div>
+
+              {/* Order Currency Selector */}
+              <div>
+                <label className="block text-xs font-bold text-amber-900 mb-1 flex items-center gap-1">
+                  <Coins className="w-3.5 h-3.5 text-amber-600" />
+                  <span>عملة الفاتورة:</span>
+                </label>
+                <select
+                  value={orderCurrency}
+                  onChange={(e) => setOrderCurrency(e.target.value)}
+                  className="w-full text-xs sm:text-sm px-3 py-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 bg-amber-50/70 font-bold text-slate-800"
+                >
+                  <option value="$">دولار أمريكي ($)</option>
+                  <option value="ل.س">ليرة سورية (ل.س)</option>
+                  <option value="د.أ">دينار أردني (د.أ)</option>
+                </select>
               </div>
 
               <div>

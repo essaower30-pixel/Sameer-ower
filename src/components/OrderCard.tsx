@@ -31,13 +31,14 @@ interface Props {
 
 export const OrderCard: React.FC<Props> = ({
   order,
-  currency,
+  currency: defaultCurrency,
   workshopName,
   onEdit,
   onDelete,
   onViewInvoice,
   onStatusChange,
 }) => {
+  const currency = order.currency || defaultCurrency;
   const statusInfo = STATUS_LABELS[order.status];
 
   // Group items count by category
@@ -69,6 +70,9 @@ export const OrderCard: React.FC<Props> = ({
             <div className="flex items-center gap-1.5 mb-1 flex-wrap">
               <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded">
                 فاتورة بيع #{order.orderNumber}
+              </span>
+              <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-200 font-mono" title="عملة الفاتورة">
+                {currency}
               </span>
               <span className="text-xs text-slate-400">
                 {new Date(order.createdAt).toLocaleDateString('ar-EG', {

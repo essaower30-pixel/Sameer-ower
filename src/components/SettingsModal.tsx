@@ -274,6 +274,29 @@ export const SettingsModal: React.FC<Props> = ({
               </div>
             </div>
 
+            {/* Exchange Rate Setting: USD to SYP */}
+            <div className="p-3 bg-amber-50/60 border border-amber-200/80 rounded-xl space-y-1.5">
+              <label className="block text-xs font-bold text-amber-900 flex items-center justify-between">
+                <span>سعر صرف الدولار مقابل الليرة السورية (1$ = ل.س):</span>
+                <span className="text-[11px] text-amber-700 font-normal">للتقارير المالية المزدوجة</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="1"
+                  step="50"
+                  value={formData.usdToSypRate ?? 14500}
+                  onChange={(e) => setFormData({ ...formData, usdToSypRate: Number(e.target.value) || 0 })}
+                  className="w-full text-xs sm:text-sm px-3 py-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 bg-white font-mono font-bold text-slate-800"
+                  placeholder="مثلاً: 14500"
+                />
+                <span className="absolute left-3 top-2 text-xs font-bold text-amber-700">ل.س لكل 1 دولار</span>
+              </div>
+              <p className="text-[11px] text-amber-800/80">
+                يُستخدم هذا السعر لحساب صافي الأرباح الموحد في التقرير المالي المزدوج عندما يكون لديك فواتير بالدولار وفواتير بالليرة.
+              </p>
+            </div>
+
             {/* Default Measurement Unit */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">

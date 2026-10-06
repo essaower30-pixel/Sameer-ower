@@ -76,6 +76,8 @@ export interface CustomerOrder {
   remainingBalance: number;
   syncedWithPurchases?: boolean; // هل تم حساب التكلفة ضمناً من فواتير الشراء
   linkedPurchaseInvoiceId?: string; // معرف فاتورة الشراء المرتبطة
+  currency?: string; // عملة الفاتورة المحددة (مثلاً $ أو ل.س)
+  exchangeRate?: number; // سعر الصرف وقت تسجيل الفاتورة إن وجد
 }
 
 export interface WorkshopSettings {
@@ -87,6 +89,7 @@ export interface WorkshopSettings {
   logoUrl?: string;
   appUrl?: string;
   currency: string;
+  usdToSypRate?: number; // سعر صرف الدولار مقابل الليرة السورية
   defaultUnit: MeasurementUnit; // 'cm' | 'm'
   invoiceNotes: string;
   defaultCosts: Record<ProductCategory, { costPerMeter: number; pricePerMeter: number; minArea: number }>;
@@ -216,6 +219,8 @@ export interface SupplierPurchaseInvoice {
   paymentStatus: PurchasePaymentStatus;
   paymentMethod?: 'cash' | 'bank' | 'check' | 'credit';
   notes?: string;
+  currency?: string; // عملة فاتورة المشتريات ($ أو ل.س)
+  exchangeRate?: number;
   createdAt: string;
 }
 
@@ -226,6 +231,8 @@ export interface WorkshopExpense {
   title: string;
   amount: number;
   category: ExpenseCategory;
+  currency?: string; // عملة المصروف ($ أو ل.س)
+  exchangeRate?: number;
   date: string;
   notes?: string;
 }
@@ -249,6 +256,7 @@ export const DEFAULT_SETTINGS: WorkshopSettings = {
   logoUrl: '',
   appUrl: '',
   currency: 'د.أ',
+  usdToSypRate: 14500,
   defaultUnit: 'cm',
   invoiceNotes: 'يشمل السعر التوريد والتركيب مع ضمان لمدة 5 سنوات على الألمنيوم وسنتين على المحركات والإكسسوارات.',
   defaultCosts: {

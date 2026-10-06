@@ -19,6 +19,7 @@ import {
   Phone,
   Building,
   CheckCircle2,
+  Coins,
 } from 'lucide-react';
 import { formatCurrency } from '../utils/calculator';
 
@@ -59,13 +60,17 @@ export const PurchaseInvoiceModal: React.FC<Props> = ({
   onSave,
   initialInvoice,
   settings,
-  currency,
+  currency: defaultCurrency,
 }) => {
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [supplierName, setSupplierName] = useState('');
   const [supplierPhone, setSupplierPhone] = useState('');
   const [supplierAddress, setSupplierAddress] = useState('');
   const [category, setCategory] = useState<PurchaseCategory>('aluminum');
+  const [invoiceCurrency, setInvoiceCurrency] = useState<string>(
+    initialInvoice?.currency || defaultCurrency || settings.currency || '$'
+  );
+  const currency = invoiceCurrency;
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
   const [dueDate, setDueDate] = useState('');
   const [paidAmount, setPaidAmount] = useState<number | ''>('');
@@ -96,6 +101,7 @@ export const PurchaseInvoiceModal: React.FC<Props> = ({
       setPaidAmount(initialInvoice.paidAmount);
       setPaymentMethod(initialInvoice.paymentMethod || 'cash');
       setNotes(initialInvoice.notes || '');
+      setInvoiceCurrency(initialInvoice.currency || defaultCurrency || settings.currency || '$');
       setItems(initialInvoice.items.length > 0 ? initialInvoice.items : []);
     } else {
       setInvoiceNumber(`PUR-${Math.floor(100 + Math.random() * 900)}`);
@@ -103,6 +109,7 @@ export const PurchaseInvoiceModal: React.FC<Props> = ({
       setSupplierPhone('');
       setSupplierAddress('');
       setCategory('aluminum');
+      setInvoiceCurrency(defaultCurrency || settings.currency || '$');
       setInvoiceDate(new Date().toISOString().split('T')[0]);
       setDueDate('');
       setPaidAmount('');
@@ -199,6 +206,8 @@ export const PurchaseInvoiceModal: React.FC<Props> = ({
       paymentStatus: calculatedStatus,
       paymentMethod,
       notes: notes.trim(),
+      currency: invoiceCurrency,
+      exchangeRate: settings.usdToSypRate || 14500,
       createdAt: initialInvoice?.createdAt || new Date().toISOString(),
     };
 
@@ -303,6 +312,23 @@ export const PurchaseInvoiceModal: React.FC<Props> = ({
                       {cat.label}
                     </option>
                   ))}
+                </select>
+              </div>
+
+              {/* Currency */}
+              <div>
+                <label className="block text-xs font-bold text-amber-900 mb-1 flex items-center gap-1">
+                  <Coins className="w-3.5 h-3.5 text-amber-600" />
+                  <span>عملة فاتورة المشتريات:</span>
+                </label>
+                <select
+                  value={invoiceCurrency}
+                  onChange={(e) => setInvoiceCurrency(e.target.value)}
+                  className="w-full text-xs sm:text-sm px-3 py-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 bg-amber-50/70 font-bold text-slate-800"
+                >
+                  <option value="$">دولار أمريكي ($)</option>
+                  <option value="ل.س">ليرة سورية (ل.س)</option>
+                  <option value="د.أ">دينار أردني (د.أ)</option>
                 </select>
               </div>
 
