@@ -71,8 +71,17 @@ export const OrderCard: React.FC<Props> = ({
               <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded">
                 فاتورة بيع #{order.orderNumber}
               </span>
-              <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-200 font-mono" title="عملة الفاتورة">
-                {currency}
+              <span
+                className={`text-[11px] font-black px-2 py-0.5 rounded-md border flex items-center gap-1 ${
+                  currency === '$'
+                    ? 'bg-blue-50 text-blue-800 border-blue-200'
+                    : currency === 'ل.س'
+                    ? 'bg-amber-100 text-amber-900 border-amber-300'
+                    : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                }`}
+                title="عملة هذه الفاتورة"
+              >
+                <span>{currency === '$' ? '💵 دولار ($)' : currency === 'ل.س' ? '🇸🇾 ليرة (ل.س)' : currency}</span>
               </span>
               <span className="text-xs text-slate-400">
                 {new Date(order.createdAt).toLocaleDateString('ar-EG', {

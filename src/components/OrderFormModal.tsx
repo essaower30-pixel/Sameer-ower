@@ -387,6 +387,61 @@ export const OrderFormModal: React.FC<Props> = ({
 
         {/* Modal Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+          {/* Prominent Currency Selector Bar */}
+          <div className="bg-gradient-to-r from-amber-500/10 via-amber-50 to-blue-50/50 p-3.5 rounded-xl border border-amber-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold shadow-xs">
+                <Coins className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-xs font-black text-slate-900 block">
+                  العملة المعتمدة لهذه الفاتورة:
+                </span>
+                <span className="text-[11px] text-slate-600">
+                  تُحسب الأسعار والتكاليف والأرباح والوصل بهذه العملة
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => setOrderCurrency('$')}
+                className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  orderCurrency === '$'
+                    ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-500/30'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
+                }`}
+              >
+                <span>💵 دولار أمريكي ($)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setOrderCurrency('ل.س')}
+                className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  orderCurrency === 'ل.س'
+                    ? 'bg-amber-600 text-white shadow-xs ring-2 ring-amber-500/30'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
+                }`}
+              >
+                <span>🇸🇾 ليرة سورية (ل.س)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setOrderCurrency('د.أ')}
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  orderCurrency === 'د.أ'
+                    ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-500/30'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
+                }`}
+              >
+                <span>🇯🇴 دينار (د.أ)</span>
+              </button>
+            </div>
+          </div>
+
           {/* Customer & Order Metadata Section */}
           <div className="bg-slate-50/80 p-4 rounded-xl border border-slate-200/80 space-y-3">
             <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">

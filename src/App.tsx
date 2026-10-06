@@ -15,6 +15,7 @@ import { Navbar, ActiveNavTab } from './components/Navbar';
 import { OrderCard } from './components/OrderCard';
 import { OrderFormModal } from './components/OrderFormModal';
 import { InvoiceModal } from './components/InvoiceModal';
+import { StatsCards } from './components/StatsCards';
 import { FinancesPage } from './components/FinancesPage';
 import { SuppliersPage } from './components/SuppliersPage';
 import { PurchaseInvoiceModal } from './components/PurchaseInvoiceModal';
@@ -26,6 +27,8 @@ import {
   Filter,
   Plus,
   Inbox,
+  Coins,
+  ArrowLeftRight,
 } from 'lucide-react';
 
 export default function App() {
@@ -50,7 +53,15 @@ export default function App() {
   const [orders, setOrders] = useState<CustomerOrder[]>(() => {
     try {
       const saved = localStorage.getItem('workshop_orders');
-      return saved ? JSON.parse(saved) : INITIAL_ORDERS;
+      if (saved) {
+        const parsed: CustomerOrder[] = JSON.parse(saved);
+        const hasSyp = parsed.some((o) => o.currency === 'ل.س');
+        if (!hasSyp && INITIAL_ORDERS[2]) {
+          return [...parsed.map((o) => ({ ...o, currency: o.currency || '$' })), INITIAL_ORDERS[2]];
+        }
+        return parsed.map((o) => ({ ...o, currency: o.currency || '$' }));
+      }
+      return INITIAL_ORDERS;
     } catch {
       return INITIAL_ORDERS;
     }
@@ -60,19 +71,28 @@ export default function App() {
   const [purchaseInvoices, setPurchaseInvoices] = useState<SupplierPurchaseInvoice[]>(() => {
     try {
       const saved = localStorage.getItem('workshop_purchases');
-      return saved ? JSON.parse(saved) : INITIAL_PURCHASE_INVOICES;
+      if (saved) {
+        const parsed: SupplierPurchaseInvoice[] = JSON.parse(saved);
+        const hasSyp = parsed.some((p) => p.currency === 'ل.س');
+        if (!hasSyp && INITIAL_PURCHASE_INVOICES[2]) {
+          return [...parsed.map((p) => ({ ...p, currency: p.currency || '$' })), INITIAL_PURCHASE_INVOICES[2]];
+        }
+        return parsed.map((p) => ({ ...p, currency: p.currency || '$' }));
+      }
+      return INITIAL_PURCHASE_INVOICES;
     } catch {
       return INITIAL_PURCHASE_INVOICES;
     }
   });
 
-  // Navigation tab: 'orders' (الزبائن - بيع) | 'suppliers' (الموردين - شراء) | 'finances' (الأرباح والميزانية)
+  // Navigation tab: 'orders' | 'suppliers' | 'finances' | 'dual_currency'
   const [activeTab, setActiveTab] = useState<ActiveNavTab>('orders');
 
   // Search & Filter state for Customer Orders
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [currencyFilter, setCurrencyFilter] = useState<string>('all');
 
   // Modals state for Customer Orders
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
@@ -89,7 +109,15 @@ export default function App() {
   const [expenses, setExpenses] = useState<WorkshopExpense[]>(() => {
     try {
       const saved = localStorage.getItem('workshop_expenses');
-      return saved ? JSON.parse(saved) : INITIAL_EXPENSES;
+      if (saved) {
+        const parsed: WorkshopExpense[] = JSON.parse(saved);
+        const hasSyp = parsed.some((e) => e.currency === 'ل.س');
+        if (!hasSyp && INITIAL_EXPENSES[5]) {
+          return [...parsed.map((e) => ({ ...e, currency: e.currency || '$' })), INITIAL_EXPENSES[5]];
+        }
+        return parsed.map((e) => ({ ...e, currency: e.currency || '$' }));
+      }
+      return INITIAL_EXPENSES;
     } catch {
       return INITIAL_EXPENSES;
     }
@@ -301,7 +329,11 @@ export default function App() {
       categoryFilter === 'all' ||
       order.items.some((item) => item.category === categoryFilter);
 
-    return matchesSearch && matchesStatus && matchesCategory;
+    const matchesCurrency =
+      currencyFilter === 'all' ||
+      (order.currency || settings.currency || '$') === currencyFilter;
+
+    return matchesSearch && matchesStatus && matchesCategory && matchesCurrency;
   });
 
   return (
@@ -333,6 +365,44 @@ export default function App() {
         {/* Tab 1: Customers & Sales Invoices (الزبائن - فواتير البيع) */}
         {activeTab === 'orders' && (
           <div className="space-y-5 animate-in fade-in duration-200">
+            {/* Dual Currency Alert / Quick Navigation Banner */}
+            <div className="bg-gradient-to-r from-amber-500/10 via-amber-50/70 to-blue-50/40 border border-amber-300 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
+                  <Coins className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-2 flex-wrap">
+                    <span>نظام الحسابات المزدوج بالدولار ($) والليرة السورية (ل.س) 💱</span>
+                    <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-black">
+                      سعر الصرف: 1$ = {(settings.usdToSypRate || 14500).toLocaleString()} ل.س
+                    </span>
+                  </h4>
+                  <p className="text-xs text-slate-600 mt-1">
+                    يمكنك إصدار فواتير البيع أو فواتير المشتريات بالدولار أو بالليرة، مع تقارير منفصلة وموحدة للأرباح.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('dual_currency')}
+                  className="w-full sm:w-auto px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <Coins className="w-3.5 h-3.5" />
+                  <span>فتح تقرير العملتين ($ / ل.س) 📊</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Business Stats Cards (Executive Overview Separating Currencies) */}
+            <StatsCards
+              orders={orders}
+              currency={settings.currency}
+              onNavigateToFinances={() => setActiveTab('dual_currency')}
+            />
+
             {/* Filter, Search & Actions Bar */}
             <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
               {/* Search input */}
@@ -349,6 +419,22 @@ export default function App() {
 
               {/* Status & Category Selectors + Action Button */}
               <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                {/* فلتر عملة الفاتورة */}
+                <div className="flex items-center gap-1.5 bg-amber-50/80 border border-amber-200 rounded-lg px-2.5 py-1.5 text-xs shrink-0">
+                  <Coins className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span className="text-amber-900 font-bold shrink-0">العملة:</span>
+                  <select
+                    value={currencyFilter}
+                    onChange={(e) => setCurrencyFilter(e.target.value)}
+                    className="bg-transparent font-black text-slate-800 focus:outline-hidden cursor-pointer"
+                  >
+                    <option value="all">جميع العملات</option>
+                    <option value="$">💵 دولار ($)</option>
+                    <option value="ل.س">🇸🇾 ليرة سورية (ل.س)</option>
+                    <option value="د.أ">🇯🇴 دينار (د.أ)</option>
+                  </select>
+                </div>
+
                 {/* فلتر حالة الفاتورة */}
                 <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs shrink-0">
                   <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -459,6 +545,24 @@ export default function App() {
               purchaseInvoices={purchaseInvoices}
               settings={settings}
               currency={settings.currency}
+              initialTab="overview"
+              onAddExpense={handleAddExpense}
+              onDeleteExpense={handleDeleteExpense}
+              onSaveSettings={(newSettings) => setSettings(newSettings)}
+            />
+          </div>
+        )}
+
+        {/* Tab 4: Dedicated Dual Currency ($ / ل.س) Statement & Exchange Rate */}
+        {activeTab === 'dual_currency' && (
+          <div className="animate-in fade-in duration-200">
+            <FinancesPage
+              orders={orders}
+              expenses={expenses}
+              purchaseInvoices={purchaseInvoices}
+              settings={settings}
+              currency={settings.currency}
+              initialTab="dual_currency"
               onAddExpense={handleAddExpense}
               onDeleteExpense={handleDeleteExpense}
               onSaveSettings={(newSettings) => setSettings(newSettings)}

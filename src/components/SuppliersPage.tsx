@@ -194,8 +194,16 @@ export const SuppliersPage: React.FC<Props> = ({
                         <span className="font-mono text-xs font-black text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
                           {invoice.invoiceNumber}
                         </span>
-                        <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-mono">
-                          {invCurrency}
+                        <span
+                          className={`text-[11px] font-black px-2 py-0.5 rounded-md border flex items-center gap-1 ${
+                            invCurrency === '$'
+                              ? 'bg-blue-50 text-blue-800 border-blue-200'
+                              : invCurrency === 'ل.س'
+                              ? 'bg-amber-100 text-amber-900 border-amber-300'
+                              : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                          }`}
+                        >
+                          {invCurrency === '$' ? '💵 دولار ($)' : invCurrency === 'ل.س' ? '🇸🇾 ليرة (ل.س)' : invCurrency}
                         </span>
                         <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
                           {catInfo.label}

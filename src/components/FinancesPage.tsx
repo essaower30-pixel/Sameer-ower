@@ -49,15 +49,10 @@ interface Props {
   onAddExpense: (expense: Omit<WorkshopExpense, 'id'>) => void;
   onDeleteExpense: (id: string) => void;
   onSaveSettings?: (settings: WorkshopSettings) => void;
+  initialTab?: FinanceViewTab;
 }
 
-type FinanceViewTab =
-  | 'overview'
-  | 'dual_currency'
-  | 'sales_report'
-  | 'purchases_report'
-  | 'profit_loss'
-  | 'expenses';
+export type { FinanceViewTab };
 
 export const FinancesPage: React.FC<Props> = ({
   orders,
@@ -68,9 +63,16 @@ export const FinancesPage: React.FC<Props> = ({
   onAddExpense,
   onDeleteExpense,
   onSaveSettings,
+  initialTab,
 }) => {
   // Active report tab
-  const [activeTab, setActiveTab] = useState<FinanceViewTab>('overview');
+  const [activeTab, setActiveTab] = useState<FinanceViewTab>(initialTab || 'overview');
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // Privacy mask toggle (in case someone is standing nearby)
   const [isMasked, setIsMasked] = useState(false);

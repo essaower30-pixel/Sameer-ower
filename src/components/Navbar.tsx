@@ -20,7 +20,7 @@ import { WorkshopSettingsDropdown } from './WorkshopSettingsDropdown';
 import { PWAInstallButton } from './PWAInstallButton';
 import { AppQRCodeCard } from './AppQRCodeCard';
 
-export type ActiveNavTab = 'orders' | 'suppliers' | 'finances' | 'calculator';
+export type ActiveNavTab = 'orders' | 'suppliers' | 'finances' | 'dual_currency' | 'calculator';
 
 interface Props {
   activeTab: ActiveNavTab;
@@ -170,6 +170,27 @@ export const Navbar: React.FC<Props> = ({
               />
               <span className="hidden sm:inline">الأرباح والميزانية</span>
               <span className="sm:hidden">الأرباح</span>
+            </button>
+
+            {/* 4. حسابات العملتين ($ ول.س) */}
+            <button
+              id="nav-tab-dual-currency"
+              type="button"
+              onClick={() => setActiveTab('dual_currency')}
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 md:px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
+                activeTab === 'dual_currency'
+                  ? 'bg-amber-600 text-white shadow-xs ring-1 ring-amber-700/60 font-black'
+                  : 'text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/90'
+              }`}
+              title="تقرير الحسابات المزدوج: دولار ($) وليرة سورية (ل.س) وسعر الصرف"
+            >
+              <Coins
+                className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${
+                  activeTab === 'dual_currency' ? 'text-white' : 'text-amber-600'
+                }`}
+              />
+              <span className="hidden sm:inline">حسابات العملتين ($ / ل.س) 💱</span>
+              <span className="sm:hidden">العملتين ($ / ل.س)</span>
             </button>
           </nav>
 
