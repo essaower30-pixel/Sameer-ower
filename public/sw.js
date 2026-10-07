@@ -1,4 +1,4 @@
-const CACHE_NAME = 'workshop-cache-v13-20261007';
+const CACHE_NAME = 'workshop-cache-v15-20261007-firestore';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.webmanifest',
