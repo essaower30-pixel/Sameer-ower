@@ -17,6 +17,7 @@ import {
 } from '../utils/purchaseSync';
 import { CategoryBadge } from './CategoryBadge';
 import { KitchenItemBuilder } from './KitchenItemBuilder';
+import { QuantityStepper } from './QuantityStepper';
 import {
   X,
   Plus,
@@ -796,14 +797,12 @@ export const OrderFormModal: React.FC<Props> = ({
                         <label className="block text-[11px] font-semibold text-slate-600 mb-1">
                           {item.category === 'kitchens' ? 'العدد (مطابخ):' : 'الكمية (العدد):'}
                         </label>
-                        <input
-                          type="number"
-                          min="1"
-                          value={item.quantity || ''}
-                          onChange={(e) =>
-                            updateItem(item.id, { quantity: parseInt(e.target.value) || 1 })
-                          }
-                          className="w-full px-2 py-1.5 font-bold font-mono border border-slate-300 rounded bg-slate-50/50 text-center"
+                        <QuantityStepper
+                          value={item.quantity || 1}
+                          onChange={(val) => updateItem(item.id, { quantity: val })}
+                          min={1}
+                          size="md"
+                          className="w-full"
                         />
                       </div>
 

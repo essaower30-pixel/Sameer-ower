@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { OrderItem, ItemOptions, KitchenComponentItem } from '../types';
 import { formatCurrency } from '../utils/calculator';
+import { QuantityStepper } from './QuantityStepper';
 import {
   UtensilsCrossed,
   Plus,
@@ -599,15 +600,16 @@ export const KitchenItemBuilder: React.FC<Props> = ({
               </div>
 
               {/* الكمية */}
-              <div className="sm:col-span-1">
+              <div className="sm:col-span-1 min-w-[110px]">
                 <label className="block text-[10px] font-bold text-slate-700 mb-0.5">الكمية:</label>
-                <input
-                  type="number"
-                  min="0.1"
-                  step="any"
-                  value={customQuantity}
-                  onChange={(e) => setCustomQuantity(parseFloat(e.target.value) || 1)}
-                  className="w-full px-2 py-1.5 border border-slate-300 rounded text-center font-mono font-bold text-xs"
+                <QuantityStepper
+                  value={Number(customQuantity) || 1}
+                  onChange={(val) => setCustomQuantity(val)}
+                  min={0.1}
+                  step={1}
+                  allowDecimals={true}
+                  size="sm"
+                  className="w-full"
                 />
               </div>
 
@@ -688,7 +690,7 @@ export const KitchenItemBuilder: React.FC<Props> = ({
                   <tr className="bg-orange-100/70 text-orange-950 border-b border-orange-200 font-bold">
                     <th className="p-2 w-8 text-center">#</th>
                     <th className="p-2">الإضافة / المادة الاختيارية (رخام، مفصلات، مسكات...)</th>
-                    <th className="p-2 text-center w-20">الكمية</th>
+                    <th className="p-2 text-center w-28">الكمية</th>
                     <th className="p-2 text-center w-20">الوحدة</th>
                     <th className="p-2 text-center w-36 bg-amber-200/40 text-amber-950">
                       <span className="flex items-center justify-center gap-1">
@@ -719,17 +721,18 @@ export const KitchenItemBuilder: React.FC<Props> = ({
                           />
                         </td>
                         <td className="p-2 text-center">
-                          <input
-                            type="number"
-                            min="0.1"
-                            step="any"
+                          <QuantityStepper
                             value={comp.quantity}
-                            onChange={(e) =>
+                            onChange={(val) =>
                               handleUpdateComponent(comp.id, {
-                                quantity: parseFloat(e.target.value) || 1,
+                                quantity: val,
                               })
                             }
-                            className="w-16 px-1 py-0.5 border border-slate-200 rounded text-center font-mono font-bold text-xs"
+                            min={0.1}
+                            step={1}
+                            allowDecimals={true}
+                            size="sm"
+                            className="w-24 mx-auto"
                           />
                         </td>
                         <td className="p-2 text-center text-slate-500 font-medium">{comp.unit}</td>

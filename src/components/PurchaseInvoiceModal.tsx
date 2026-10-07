@@ -22,6 +22,7 @@ import {
   Coins,
 } from 'lucide-react';
 import { formatCurrency } from '../utils/calculator';
+import { QuantityStepper } from './QuantityStepper';
 
 interface Props {
   isOpen: boolean;
@@ -430,7 +431,7 @@ export const PurchaseInvoiceModal: React.FC<Props> = ({
                       <th className="p-2.5 w-10 text-center">#</th>
                       <th className="p-2.5 min-w-[220px]">بيان الخامة / البضاعة</th>
                       <th className="p-2.5 w-24">الوحدة</th>
-                      <th className="p-2.5 w-24">الكمية</th>
+                      <th className="p-2.5 w-32 text-center">الكمية</th>
                       <th className="p-2.5 w-28">سعر الوحدة ({currency})</th>
                       <th className="p-2.5 w-28">الإجمالي ({currency})</th>
                       <th className="p-2.5 w-12 text-center">حذف</th>
@@ -466,14 +467,15 @@ export const PurchaseInvoiceModal: React.FC<Props> = ({
                             <option value="متر">متر طولي</option>
                           </select>
                         </td>
-                        <td className="p-2">
-                          <input
-                            type="number"
-                            min="0.1"
-                            step="any"
-                            value={item.quantity || ''}
-                            onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                            className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs font-mono text-center focus:ring-1 focus:ring-amber-500"
+                        <td className="p-2 text-center">
+                          <QuantityStepper
+                            value={item.quantity || 1}
+                            onChange={(val) => handleItemChange(index, 'quantity', val)}
+                            min={0.1}
+                            step={1}
+                            allowDecimals={true}
+                            size="sm"
+                            className="w-28 mx-auto"
                           />
                         </td>
                         <td className="p-2">

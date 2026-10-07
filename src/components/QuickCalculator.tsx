@@ -7,6 +7,7 @@ import {
   CATEGORY_LABELS,
 } from '../types';
 import { calculateItemMetrics, formatCurrency } from '../utils/calculator';
+import { QuantityStepper } from './QuantityStepper';
 import {
   Calculator,
   Plus,
@@ -322,13 +323,12 @@ export const QuickCalculator: React.FC<Props> = ({
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   العدد (الكمية):
                 </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={quantity || ''}
-                  onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                  className="w-full text-base font-bold font-mono px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-hidden text-center"
-                  placeholder="1"
+                <QuantityStepper
+                  value={quantity || 1}
+                  onChange={(val) => setQuantity(val)}
+                  min={1}
+                  size="md"
+                  className="w-full h-[42px]"
                 />
               </div>
             </div>
