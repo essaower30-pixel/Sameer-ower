@@ -95,18 +95,21 @@ export const WorkshopSettingsDropdown: React.FC<Props> = ({
     try {
       if ('caches' in window) {
         const keys = await caches.keys();
-        await Promise.all(
-          keys
-            .filter((k) => k !== 'workshop-cache-v10')
-            .map((k) => caches.delete(k))
-        );
+        await Promise.all(keys.map((k) => caches.delete(k)));
       }
-      if (navigator.serviceWorker?.controller) {
-        navigator.serviceWorker.controller.postMessage({ type: 'PURGE_OLD_CACHES' });
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const reg of regs) {
+          await reg.unregister();
+        }
       }
-      setPurgeOldCacheMessage('✅ تم مسح كافة النسخ القديمة للكاش بنجاح! يتم الآن استخدام أحدث نسخة.');
+      localStorage.removeItem('al_fann_build_version');
+      setPurgeOldCacheMessage('✅ تم مسح الكاش وتحديث التطبيق، جارِ إعادة التحميل...');
+      setTimeout(() => {
+        window.location.href = window.location.origin + window.location.pathname + '?upd=' + Date.now();
+      }, 500);
     } catch {
-      setPurgeOldCacheMessage('✅ تم تنظيف الكاش القديم بنجاح.');
+      window.location.reload();
     } finally {
       setIsPurgingOldCache(false);
     }

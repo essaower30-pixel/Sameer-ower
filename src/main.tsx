@@ -5,29 +5,28 @@ import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import './index.css';
 
 // Build / Modification Version identifier
-export const APP_BUILD_VERSION = 'workshop-v15-20261007-firestore';
-const ACTIVE_CACHE_NAME = 'workshop-cache-v15-20261007-firestore';
+export const APP_BUILD_VERSION = 'workshop-v16-20261007-quantity-stepper';
+const ACTIVE_CACHE_NAME = 'workshop-cache-v16-20261007-quantity-stepper';
 
 // 1. Automatic Old Cache Purge Mechanism after any modification / deployment
 if (typeof window !== 'undefined') {
   try {
     const savedVersion = localStorage.getItem('al_fann_build_version');
-    if (savedVersion !== APP_BUILD_VERSION) {
-      console.log(`[Cache Manager] New modification detected (${savedVersion || 'initial'} -> ${APP_BUILD_VERSION}). Purging outdated caches...`);
+    if (savedVersion && savedVersion !== APP_BUILD_VERSION) {
+      console.log(`[Cache Manager] New modification detected (${savedVersion} -> ${APP_BUILD_VERSION}). Purging outdated caches...`);
+      localStorage.setItem('al_fann_build_version', APP_BUILD_VERSION);
       if ('caches' in window) {
         caches.keys().then((keys) => {
           return Promise.all(
             keys
               .filter((key) => key !== ACTIVE_CACHE_NAME)
-              .map((key) => {
-                console.log('[Cache Manager] Deleted legacy cache:', key);
-                return caches.delete(key);
-              })
+              .map((key) => caches.delete(key))
           );
-        }).catch((err) => {
-          console.debug('[Cache Manager] Cache cleanup note:', err);
+        }).finally(() => {
+          window.location.reload();
         });
       }
+    } else {
       localStorage.setItem('al_fann_build_version', APP_BUILD_VERSION);
     }
   } catch (e) {

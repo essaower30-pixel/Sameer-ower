@@ -8,6 +8,7 @@ import {
   QrCode,
   TrendingUp,
   X,
+  RefreshCw,
 } from 'lucide-react';
 import {
   WorkshopSettings,
@@ -44,6 +45,26 @@ interface Props {
   onCurrencyChange: (currency: string) => void;
   onDefaultUnitChange: (unit: MeasurementUnit) => void;
 }
+
+export const forceUpdateApp = async () => {
+  try {
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const reg of registrations) {
+        await reg.unregister();
+      }
+    }
+    localStorage.removeItem('al_fann_build_version');
+  } catch (e) {
+    console.debug('Cache wipe note:', e);
+  }
+  // Hard reload with cache buster query parameter to force Android WebAPK / Chrome to fetch fresh bundle
+  window.location.href = window.location.origin + window.location.pathname + '?v=' + Date.now();
+};
 
 export const Navbar: React.FC<Props> = ({
   activeTab,
@@ -237,6 +258,17 @@ export const Navbar: React.FC<Props> = ({
                 م
               </button>
             </div>
+
+            {/* Quick Update Button on desktop */}
+            <button
+              type="button"
+              onClick={forceUpdateApp}
+              className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold transition active:scale-95 cursor-pointer"
+              title="تحديث التطبيق ومسح الكاش"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-emerald-600" />
+              <span>تحديث 🔄</span>
+            </button>
           </div>
         </div>
       </div>
@@ -252,16 +284,28 @@ export const Navbar: React.FC<Props> = ({
           <span className="font-bold text-slate-800 truncate">{settings.workshopName}</span>
         </div>
 
-        {/* Direct QR Barcode Button for Mobile */}
-        <button
-          type="button"
-          onClick={() => setShowQRModal(true)}
-          className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-[10px] font-bold shadow-2xs active:scale-95 transition cursor-pointer shrink-0"
-          title="عرض رابط وباركود التطبيق للمحل"
-        >
-          <QrCode className="w-3 h-3" />
-          <span>الباركود 📲</span>
-        </button>
+        {/* Action Buttons for Mobile */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={forceUpdateApp}
+            className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[10px] font-bold shadow-2xs active:scale-95 transition cursor-pointer"
+            title="تحديث التطبيق للنسخة الأخيرة ومسح الكاش"
+          >
+            <RefreshCw className="w-3 h-3" />
+            <span>تحديث 🔄</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowQRModal(true)}
+            className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-[10px] font-bold shadow-2xs active:scale-95 transition cursor-pointer"
+            title="عرض رابط وباركود التطبيق للمحل"
+          >
+            <QrCode className="w-3 h-3" />
+            <span>الباركود 📲</span>
+          </button>
+        </div>
 
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-[10px] text-slate-400">
