@@ -28,18 +28,14 @@ interface Props {
   isCompact?: boolean;
 }
 
-export const PERMANENT_PUBLIC_APP_URL = 'https://ais-pre-vcjap6okc2rntse3oeifvb-105836077369.europe-west2.run.app';
-
-export const sanitizeUrlForMobile = (rawUrl?: string): string => {
-  if (!rawUrl || rawUrl.trim() === '') {
-    return PERMANENT_PUBLIC_APP_URL;
+export const resolveCurrentAppUrl = (appUrl?: string): string => {
+  if (appUrl && appUrl.trim() !== '') {
+    return appUrl.trim();
   }
-  let clean = rawUrl.trim();
-  // Automatically convert private dev container URL (ais-dev-) to public permanent URL (ais-pre-)
-  if (clean.includes('ais-dev-')) {
-    clean = clean.replace('ais-dev-', 'ais-pre-');
+  if (typeof window !== 'undefined' && window.location) {
+    return window.location.origin;
   }
-  return clean;
+  return 'https://ais-dev-vcjap6okc2rntse3oeifvb-105836077369.europe-west2.run.app';
 };
 
 export const AppQRCodeCard: React.FC<Props> = ({
@@ -51,21 +47,21 @@ export const AppQRCodeCard: React.FC<Props> = ({
   isCompact = false,
 }) => {
   const [currentUrl, setCurrentUrl] = useState<string>(() => {
-    return sanitizeUrlForMobile(appUrl);
+    return resolveCurrentAppUrl(appUrl);
   });
 
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copied, setCopied] = useState<boolean>(false);
   const [isEditingUrl, setIsEditingUrl] = useState<boolean>(false);
-  const [inputUrl, setInputUrl] = useState<string>(() => sanitizeUrlForMobile(appUrl));
+  const [inputUrl, setInputUrl] = useState<string>(() => resolveCurrentAppUrl(appUrl));
   const [activeGuideTab, setActiveGuideTab] = useState<'iphone' | 'android' | null>('iphone');
   const printRef = useRef<HTMLDivElement>(null);
 
   // Sync when prop changes
   useEffect(() => {
-    const clean = sanitizeUrlForMobile(appUrl);
-    setCurrentUrl(clean);
-    setInputUrl(clean);
+    const resolved = resolveCurrentAppUrl(appUrl);
+    setCurrentUrl(resolved);
+    setInputUrl(resolved);
   }, [appUrl]);
 
   // Generate QR code whenever currentUrl changes
@@ -111,7 +107,6 @@ export const AppQRCodeCard: React.FC<Props> = ({
     if (formatted && !/^https?:\/\//i.test(formatted)) {
       formatted = 'https://' + formatted;
     }
-    formatted = sanitizeUrlForMobile(formatted);
     setCurrentUrl(formatted);
     setInputUrl(formatted);
     setIsEditingUrl(false);
@@ -121,12 +116,14 @@ export const AppQRCodeCard: React.FC<Props> = ({
   };
 
   const handleResetToCurrentOrigin = () => {
-    const cleanUrl = PERMANENT_PUBLIC_APP_URL;
-    setCurrentUrl(cleanUrl);
-    setInputUrl(cleanUrl);
-    setIsEditingUrl(false);
-    if (onUrlChange) {
-      onUrlChange(cleanUrl);
+    if (typeof window !== 'undefined' && window.location) {
+      const origin = window.location.origin;
+      setCurrentUrl(origin);
+      setInputUrl(origin);
+      setIsEditingUrl(false);
+      if (onUrlChange) {
+        onUrlChange(origin);
+      }
     }
   };
 
@@ -418,14 +415,14 @@ export const AppQRCodeCard: React.FC<Props> = ({
               </div>
             )}
 
-            {/* Reassurance banner explaining permanent standalone public URL */}
-            <div className="bg-emerald-950/60 border border-emerald-500/50 rounded-xl p-3 text-xs space-y-1 text-emerald-200 mt-2">
-              <div className="flex items-center gap-1.5 font-bold text-emerald-300">
-                <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>الرابط العام الدائم (مباشر 24/7 دون الحاجة لقوقل استديو)</span>
+            {/* Helpful tip about Google AI Studio Share button */}
+            <div className="bg-slate-800/90 border border-amber-500/30 rounded-xl p-3 text-xs space-y-1 text-slate-200 mt-2">
+              <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                <Info className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>لتشغيل التطبيق على الهاتف بدون قوقل استديو نهائياً:</span>
               </div>
-              <p className="text-[11px] text-emerald-100/90 leading-relaxed">
-                هذا الرابط مخصص للهواتف، يعمل بشكل مستقل ومباشر على الآيفون والأندرويد دون طلب تسجيل دخول وبدون خطأ 403 أو حظر الكوكيز في سفاري.
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                اضغط على زر <strong>Share (مشاركة)</strong> أعلى يمين شاشة Google AI Studio واجعله متاحاً <em>(Anyone with the link)</em>، ليصبح الرابط عاماً ومستقلاً 24 ساعة دون أي قيود أو أخطاء 403.
               </p>
             </div>
           </div>

@@ -284,7 +284,7 @@ export const DEFAULT_SETTINGS: WorkshopSettings = {
   address: 'المنطقة الصناعية - الشارع الرئيسي',
   email: 'workshop@example.com',
   logoUrl: '',
-  appUrl: 'https://ais-pre-vcjap6okc2rntse3oeifvb-105836077369.europe-west2.run.app',
+  appUrl: '',
   currency: 'د.أ',
   usdToSypRate: 14500,
   defaultUnit: 'cm',

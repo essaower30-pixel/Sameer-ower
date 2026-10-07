@@ -45,17 +45,12 @@ function deduplicateById<T extends { id: string }>(items: T[]): T[] {
 export default function App() {
   // Load settings from localStorage or fallback to defaults
   const [settings, setSettings] = useState<WorkshopSettings>(() => {
-    const PUBLIC_APP_URL = 'https://ais-pre-vcjap6okc2rntse3oeifvb-105836077369.europe-west2.run.app';
     try {
       const saved = localStorage.getItem('workshop_settings');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.currency && !SUPPORTED_CURRENCIES.some((c) => c.code === parsed.currency)) {
           parsed.currency = '$';
-        }
-        // Always ensure appUrl points to the permanent standalone public URL (not the private dev container)
-        if (!parsed.appUrl || parsed.appUrl.includes('ais-dev-') || parsed.appUrl.trim() === '') {
-          parsed.appUrl = PUBLIC_APP_URL;
         }
         return parsed;
       }

@@ -12,21 +12,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="ورشة الألمنيوم" />
     <meta name="application-name" content="ورشة الألمنيوم" />
-    <!-- Auto-redirect to permanent public URL if opened on private dev container on phone or standalone -->
-    <script>
-      (function() {
-        try {
-          if (
-            window.location.hostname &&
-            window.location.hostname.indexOf('ais-dev-') !== -1 &&
-            window.self === window.top
-          ) {
-            var publicUrl = window.location.href.replace('ais-dev-', 'ais-pre-');
-            window.location.replace(publicUrl);
-          }
-        } catch (e) {}
-      })();
-    </script>
     <!-- Early capture of beforeinstallprompt to ensure direct install prompt is never missed -->
     <script>
       window.__pwaInstallPrompt = null;
