@@ -190,18 +190,16 @@ export const Navbar: React.FC<Props> = ({
             {/* PWA Install Button (أوفلاين) */}
             <PWAInstallButton />
 
-            {/* Currency Quick Switcher (visible on md+) */}
+            {/* Currency Quick Switcher (أيقونة صغيرة وقائمة منسدلة أنيقة) */}
             <div
-              className="hidden md:flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200"
-              title="تغيير العملة"
+              className="flex items-center bg-slate-100 hover:bg-slate-200/70 rounded-lg px-1.5 py-0.5 border border-slate-200 transition-colors"
+              title="تغيير العملة الرئيسية"
             >
-              <div className="flex items-center px-1 text-slate-500">
-                <Coins className="w-3.5 h-3.5 text-amber-600" />
-              </div>
+              <Coins className="w-3.5 h-3.5 text-amber-600 shrink-0" />
               <select
                 value={settings.currency}
                 onChange={(e) => onCurrencyChange(e.target.value)}
-                className="bg-transparent text-xs font-bold text-slate-800 pr-0.5 pl-3 py-1 appearance-none cursor-pointer focus:outline-hidden"
+                className="bg-transparent text-xs font-bold text-slate-800 pr-1 pl-1 py-1 appearance-none cursor-pointer focus:outline-hidden"
               >
                 {SUPPORTED_CURRENCIES.map((c) => (
                   <option key={c.code} value={c.code}>

@@ -733,11 +733,13 @@ export const OrderFormModal: React.FC<Props> = ({
 
                     {/* Numeric Dimension & Pricing Grid */}
                     <div className="p-3 sm:p-4 grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs bg-white">
-                      {/* Width */}
+                      {/* Width / Linear Running Meters */}
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-[11px] font-semibold text-slate-600">
-                            العرض ({item.unit === 'cm' ? 'سم' : 'م'}):
+                          <label className="text-[11px] font-bold text-slate-700">
+                            {item.category === 'kitchens'
+                              ? `المقاس بمتر الجر (${item.unit === 'cm' ? 'سم' : 'م'}):`
+                              : `العرض (${item.unit === 'cm' ? 'سم' : 'م'}):`}
                           </label>
                         </div>
                         <input
@@ -747,20 +749,30 @@ export const OrderFormModal: React.FC<Props> = ({
                           onChange={(e) =>
                             updateItem(item.id, { width: parseFloat(e.target.value) || 0 })
                           }
-                          className="w-full px-2 py-1.5 font-bold font-mono border border-slate-300 rounded bg-slate-50/50 text-center"
+                          className={`w-full px-2 py-1.5 font-bold font-mono border rounded text-center ${
+                            item.category === 'kitchens'
+                              ? 'border-orange-400 bg-orange-50/40 text-orange-950 font-black'
+                              : 'border-slate-300 bg-slate-50/50'
+                          }`}
                         />
                         <span className="text-[10px] text-blue-600 font-mono block mt-0.5 text-center font-medium" dir="ltr">
-                          {item.unit === 'cm'
+                          {item.category === 'kitchens'
+                            ? item.unit === 'cm'
+                              ? `≈ ${(item.width / 100).toFixed(2)} متر جر`
+                              : `${item.width} متر جر`
+                            : item.unit === 'cm'
                             ? `≈ ${(item.width / 100).toFixed(2)}m`
                             : `≈ ${Math.round(item.width * 100)}cm`}
                         </span>
                       </div>
 
-                      {/* Height */}
+                      {/* Height / Cabinet Height */}
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <label className="text-[11px] font-semibold text-slate-600">
-                            الارتفاع ({item.unit === 'cm' ? 'سم' : 'م'}):
+                            {item.category === 'kitchens'
+                              ? `ارتفاع الخزائن (${item.unit === 'cm' ? 'سم' : 'م'}):`
+                              : `الارتفاع (${item.unit === 'cm' ? 'سم' : 'م'}):`}
                           </label>
                         </div>
                         <input
@@ -782,7 +794,7 @@ export const OrderFormModal: React.FC<Props> = ({
                       {/* Quantity */}
                       <div>
                         <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                          الكمية (العدد):
+                          {item.category === 'kitchens' ? 'العدد (مطابخ):' : 'الكمية (العدد):'}
                         </label>
                         <input
                           type="number"
@@ -795,20 +807,28 @@ export const OrderFormModal: React.FC<Props> = ({
                         />
                       </div>
 
-                      {/* Area Result */}
+                      {/* Area / Running Meters Result */}
                       <div>
                         <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                          المساحة الإجمالية:
+                          {item.category === 'kitchens' ? 'إجمالي متر الجر:' : 'المساحة الإجمالية:'}
                         </label>
-                        <div className="px-2 py-1.5 font-bold font-mono bg-slate-100 rounded text-center text-slate-800 border border-slate-200">
-                          {item.totalArea} م²
+                        <div
+                          className={`px-2 py-1.5 font-bold font-mono rounded text-center border ${
+                            item.category === 'kitchens'
+                              ? 'bg-orange-100 text-orange-950 border-orange-300 font-black'
+                              : 'bg-slate-100 text-slate-800 border-slate-200'
+                          }`}
+                        >
+                          {item.totalArea} {item.category === 'kitchens' ? 'متر جر' : 'م²'}
                         </div>
                       </div>
 
                       {/* Selling Price per Meter */}
                       <div>
                         <label className="block text-[11px] font-bold text-blue-700 mb-1">
-                          سعر بيع المتر ({currency}):
+                          {item.category === 'kitchens'
+                            ? `سعر متر الجر (${currency}):`
+                            : `سعر بيع المتر (${currency}):`}
                         </label>
                         <input
                           type="number"
@@ -829,8 +849,24 @@ export const OrderFormModal: React.FC<Props> = ({
                         <span className="font-bold text-blue-900 font-mono text-sm">
                           {formatCurrency(item.totalPrice, currency)}
                         </span>
-                        <span className="text-[11px] text-slate-400">
-                          ({item.totalArea} م² × {formatCurrency(item.pricePerMeter, currency)}{item.additionalPrice > 0 ? ` + إضافات ${formatCurrency(item.additionalPrice * item.quantity, currency)}` : ''})
+                        <span className="text-[11px] text-slate-500">
+                          {item.category === 'kitchens'
+                            ? `(${item.totalArea} متر جر × ${formatCurrency(item.pricePerMeter, currency)}${
+                                item.additionalPrice > 0
+                                  ? ` + إضافات الرخام والمفصلات ${formatCurrency(
+                                      item.additionalPrice * item.quantity,
+                                      currency
+                                    )}`
+                                  : ''
+                              })`
+                            : `(${item.totalArea} م² × ${formatCurrency(item.pricePerMeter, currency)}${
+                                item.additionalPrice > 0
+                                  ? ` + إضافات ${formatCurrency(
+                                      item.additionalPrice * item.quantity,
+                                      currency
+                                    )}`
+                                  : ''
+                              })`}
                         </span>
                       </div>
                     </div>

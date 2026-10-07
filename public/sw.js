@@ -1,4 +1,4 @@
-const CACHE_NAME = 'workshop-cache-v12-20261006';
+const CACHE_NAME = 'workshop-cache-v13-20261007';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.webmanifest',
@@ -137,12 +137,13 @@ self.addEventListener('fetch', (event) => {
 
           const response = await Promise.race([fetchPromise, timeoutPromise]);
 
-          // If redirected to cookie check or auth bridge on external mobile devices, fallback to cached HTML
+          // If redirected to cookie check or auth bridge or 403 error on external mobile devices, fallback to cached HTML
           if (
             !response ||
             response.status >= 400 ||
             response.url.includes('cookie_check') ||
-            response.url.includes('applet-auth')
+            response.url.includes('applet-auth') ||
+            response.url.includes('aistudio.google.com')
           ) {
             const cached = (await caches.match(event.request)) || (await caches.match('/'));
             if (cached) return cached;

@@ -5,8 +5,8 @@ import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import './index.css';
 
 // Build / Modification Version identifier
-export const APP_BUILD_VERSION = 'workshop-v12-20261006';
-const ACTIVE_CACHE_NAME = 'workshop-cache-v12-20261006';
+export const APP_BUILD_VERSION = 'workshop-v13-20261007';
+const ACTIVE_CACHE_NAME = 'workshop-cache-v13-20261007';
 
 // 1. Automatic Old Cache Purge Mechanism after any modification / deployment
 if (typeof window !== 'undefined') {

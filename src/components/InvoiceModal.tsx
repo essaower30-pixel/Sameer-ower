@@ -142,9 +142,9 @@ export const InvoiceModal: React.FC<Props> = ({ order, settings, currency: defau
                   <tr className="bg-slate-900 text-white font-bold">
                     <th className="p-2 border border-slate-700 w-8 text-center">#</th>
                     <th className="p-2 border border-slate-700">البيان</th>
-                    <th className="p-2 border border-slate-700 text-center">المقاس (عرض×ارتفاع)</th>
+                    <th className="p-2 border border-slate-700 text-center">المقاس</th>
                     <th className="p-2 border border-slate-700 text-center">العدد</th>
-                    <th className="p-2 border border-slate-700 text-center">المساحة (م²)</th>
+                    <th className="p-2 border border-slate-700 text-center">القياس (م² / متر جر)</th>
                     <th className="p-2 border border-slate-700 text-center">سعر المتر</th>
                     <th className="p-2 border border-slate-700 text-left">المجموع</th>
                   </tr>
@@ -161,7 +161,7 @@ export const InvoiceModal: React.FC<Props> = ({ order, settings, currency: defau
                             <span>{item.name}</span>
                             {item.category === 'kitchens' && (
                               <span className="text-[10px] bg-orange-100 text-orange-900 border border-orange-300 font-bold px-1.5 py-0.5 rounded">
-                                تفصيل وتصنيع مطبخ
+                                تفصيل وتصنيع مطبخ (متر جر)
                               </span>
                             )}
                           </div>
@@ -188,13 +188,15 @@ export const InvoiceModal: React.FC<Props> = ({ order, settings, currency: defau
                               {item.options.kitchenComponents && item.options.kitchenComponents.length > 0 && (
                                 <div className="mt-1.5 pt-1.5 border-t border-orange-200/60">
                                   <div className="font-bold text-[10px] text-orange-950 mb-0.5">
-                                    الأصناف والخامات المشمولة في تصنيع المطبخ ({item.options.kitchenComponents.length} أصناف):
+                                    الإضافات ومستلزمات تصنيع المطبخ المشمولة ({item.options.kitchenComponents.length} إضافات):
                                   </div>
                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[10px]">
                                     {item.options.kitchenComponents.map((c, cIdx) => (
-                                      <div key={c.id || cIdx} className="flex items-center justify-between bg-white/80 px-1.5 py-0.5 rounded border border-orange-200/50">
+                                      <div key={c.id || cIdx} className="flex items-center justify-between bg-white/80 px-2 py-0.5 rounded border border-orange-200/50">
                                         <span className="truncate max-w-[200px] font-medium text-slate-800">• {c.name}</span>
-                                        <span className="font-mono text-slate-500 shrink-0">({c.quantity} {c.unit})</span>
+                                        <span className="font-mono text-slate-600 shrink-0 font-bold">
+                                          {c.quantity} {c.unit} {c.totalPrice > 0 ? `(${formatCurrency(c.totalPrice, currency)})` : ''}
+                                        </span>
                                       </div>
                                     ))}
                                   </div>
@@ -214,14 +216,16 @@ export const InvoiceModal: React.FC<Props> = ({ order, settings, currency: defau
                             <div className="text-[10px] text-slate-400 italic mt-0.5">ملاحظة: {item.notes}</div>
                           )}
                         </td>
-                        <td className="p-2 border border-slate-200 text-center font-mono text-slate-700 whitespace-nowrap">
-                          {item.width} × {item.height} {item.unit === 'cm' ? 'سم' : 'م'}
+                        <td className="p-2 border border-slate-200 text-center font-mono text-slate-700 whitespace-nowrap font-bold">
+                          {item.category === 'kitchens'
+                            ? `${item.unit === 'cm' ? (item.width / 100).toFixed(1) : item.width} متر جر`
+                            : `${item.width} × ${item.height} ${item.unit === 'cm' ? 'سم' : 'م'}`}
                         </td>
                         <td className="p-2 border border-slate-200 text-center font-mono font-bold">
                           {item.quantity}
                         </td>
-                        <td className="p-2 border border-slate-200 text-center font-mono">
-                          {item.totalArea} م²
+                        <td className="p-2 border border-slate-200 text-center font-mono font-bold text-slate-900">
+                          {item.totalArea} {item.category === 'kitchens' ? 'متر جر' : 'م²'}
                         </td>
                         <td className="p-2 border border-slate-200 text-center font-mono">
                           {formatCurrency(item.pricePerMeter, currency)}

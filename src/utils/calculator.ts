@@ -50,14 +50,16 @@ export function calculateItemMetrics(params: {
   let effectiveWidthM = unit === 'cm' ? w / 100 : w;
   let effectiveHeightM = unit === 'cm' ? (h + extraHeightCm) / 100 : (h + extraHeightCm / 100);
 
-  // Industry special rule for Zebra blinds minimum height:
-  // If Zebra blinds height is under 2.00 meters in some factories, it can be counted as 2.00m or handled via minArea
-  const rawArea = Number((effectiveWidthM * effectiveHeightM).toFixed(3));
+  // حساب المطابخ بمتر الجر (Linear Running Meters) أو باقي المنتجات بالمتر المربع
+  const isKitchen = category === 'kitchens';
+  const rawArea = isKitchen
+    ? Number(effectiveWidthM.toFixed(2)) // في المطابخ: العرض/الطول هو أمتار الجر (متر جر)
+    : Number((effectiveWidthM * effectiveHeightM).toFixed(3)); // في الألمنيوم والستائر: مساحة م² (عرض × ارتفاع)
   
-  // Single piece calculated area (respecting minimum area threshold)
+  // Single piece calculated area or linear meters (respecting minimum threshold)
   const minimumThreshold = Math.max(0, Number(minArea) || 0);
-  const calculatedArea = Number(Math.max(rawArea, minimumThreshold).toFixed(3));
-  const totalArea = Number((calculatedArea * qty).toFixed(3));
+  const calculatedArea = Number(Math.max(rawArea, minimumThreshold).toFixed(2));
+  const totalArea = Number((calculatedArea * qty).toFixed(2));
 
   const addCost = Number(additionalCost) || 0;
   const addPrice = Number(additionalPrice) || 0;

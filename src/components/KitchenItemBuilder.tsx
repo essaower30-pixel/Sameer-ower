@@ -14,6 +14,9 @@ import {
   Boxes,
   HelpCircle,
   X,
+  Lock,
+  DollarSign,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface Props {
@@ -77,31 +80,36 @@ const COMPONENT_CATEGORIES: { code: NonNullable<KitchenComponentItem['categoryTy
   { code: 'other', label: 'خامات أخرى' },
 ];
 
-// أصناف مقترحة جاهزة للإضافة السريعة
+// أصناف مقترحة جاهزة للإضافة السريعة مقسمة حسب كلام المعلم
 const PRESET_COMPONENTS = [
+  // 1. إضافات الرخام
   {
-    name: 'سلة زاوية دوارة سحرية (Magic Corner)',
-    categoryType: 'accessories' as const,
-    quantity: 1,
-    unit: 'طقم',
-    unitCost: 75,
-    unitPrice: 130,
+    name: 'رخام كاونتر كوارتز تركي معالج مع الحواف',
+    categoryType: 'countertop' as const,
+    quantity: 4,
+    unit: 'متر طولي',
+    unitCost: 30,
+    unitPrice: 60,
+    badge: 'رخام',
   },
   {
-    name: 'سلة بهارات وصوصات سحب هيدروليك',
-    categoryType: 'accessories' as const,
+    name: 'رخام جرانيت طبيعي جلاكسي أسود إسباني',
+    categoryType: 'countertop' as const,
+    quantity: 4,
+    unit: 'متر طولي',
+    unitCost: 35,
+    unitPrice: 70,
+    badge: 'رخام',
+  },
+  // 2. إضافات المفصلات والمجاري
+  {
+    name: 'طقم مفصلات هيدروليك بلوم Blum نمساوي سوفت كلوز',
+    categoryType: 'hardware' as const,
     quantity: 1,
-    unit: 'حبة',
+    unit: 'طقم كامل',
     unitCost: 20,
-    unitPrice: 38,
-  },
-  {
-    name: 'مطبقيه صحون هيدروليك ستانلس ستيل',
-    categoryType: 'accessories' as const,
-    quantity: 1,
-    unit: 'حبة',
-    unitCost: 25,
-    unitPrice: 48,
+    unitPrice: 40,
+    badge: 'مفصلات',
   },
   {
     name: 'مجاري أدراج تانديم بوكس بلوم سوفت كلوز',
@@ -110,7 +118,9 @@ const PRESET_COMPONENTS = [
     unit: 'طقم أدراج',
     unitCost: 40,
     unitPrice: 75,
+    badge: 'مفصلات',
   },
+  // 3. إضافات المسكات والمقابض
   {
     name: 'مقابض بروفيل ألمنيوم مخفي (Gola Profile)',
     categoryType: 'hardware' as const,
@@ -118,30 +128,63 @@ const PRESET_COMPONENTS = [
     unit: 'متر طولي',
     unitCost: 8,
     unitPrice: 18,
+    badge: 'مسكات',
   },
   {
-    name: 'شريط إضاءة LED مخفي بروفيل مع محول',
+    name: 'طقم مسكات ومقابض مودرن إيطالي للأبواب',
+    categoryType: 'hardware' as const,
+    quantity: 1,
+    unit: 'طقم أبواب',
+    unitCost: 15,
+    unitPrice: 30,
+    badge: 'مسكات',
+  },
+  // 4. إضافات السلال والإكسسوارات
+  {
+    name: 'سلة زاوية دوارة سحرية (Magic Corner) ستانلس',
+    categoryType: 'accessories' as const,
+    quantity: 1,
+    unit: 'طقم',
+    unitCost: 75,
+    unitPrice: 130,
+    badge: 'سلال',
+  },
+  {
+    name: 'سلة بهارات وصوصات سحب هيدروليك',
+    categoryType: 'accessories' as const,
+    quantity: 1,
+    unit: 'حبة',
+    unitCost: 20,
+    unitPrice: 38,
+    badge: 'سلال',
+  },
+  {
+    name: 'مطبقيه صحون هيدروليك ستانلس ستيل مع صينية ماء',
+    categoryType: 'accessories' as const,
+    quantity: 1,
+    unit: 'حبة',
+    unitCost: 25,
+    unitPrice: 48,
+    badge: 'سلال',
+  },
+  {
+    name: 'شريط إضاءة LED مخفي بروفيل مع محول ومستشعر',
     categoryType: 'accessories' as const,
     quantity: 1,
     unit: 'طقم كامل',
     unitCost: 22,
     unitPrice: 45,
+    badge: 'إضاءة',
   },
+  // 5. التجهيزات والأحواض
   {
-    name: 'حوض مجلى ستانلس ستيل تركي دبل',
+    name: 'حوض مجلى ستانلس ستيل تركي دبل عريض',
     categoryType: 'appliances' as const,
     quantity: 1,
     unit: 'حبة',
     unitCost: 55,
     unitPrice: 95,
-  },
-  {
-    name: 'رخام كوارتز تركي معالج مع الحواف',
-    categoryType: 'countertop' as const,
-    quantity: 4,
-    unit: 'متر طولي',
-    unitCost: 30,
-    unitPrice: 60,
+    badge: 'مجلى',
   },
 ];
 
@@ -243,11 +286,12 @@ export const KitchenItemBuilder: React.FC<Props> = ({
     }
   };
 
-  // Submit custom form
-  const handleCustomSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Submit custom item without nesting form
+  const handleCustomSubmit = (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
     if (!customName.trim()) {
-      alert('يرجى إدخال اسم الصنف أو الخامة.');
       return;
     }
     handleAddComponent({
@@ -288,13 +332,13 @@ export const KitchenItemBuilder: React.FC<Props> = ({
           </div>
           <div>
             <h4 className="font-black text-slate-900 text-sm flex items-center gap-1.5">
-              <span>تفصيل وتصنيع المطبخ (مواصفات الخامات والأصناف)</span>
+              <span>تفصيل وتصنيع المطبخ (متر جر + الإضافات الاختيارية)</span>
               <span className="text-[10px] bg-orange-100 text-orange-900 font-bold px-2 py-0.5 rounded-full border border-orange-300">
-                قسم المطابخ
+                حساب متر جر
               </span>
             </h4>
             <p className="text-[11px] text-slate-500">
-              حدد خامات الهيكل، الرخام، الدرف، وأضف الأصناف والخامات التي تدخل في صناعة المطبخ
+              المقاس بمتر الجر × سعر المتر، يتبعه إضافات الرخام والمفصلات والمسكات الاختيارية
             </p>
           </div>
         </div>
@@ -302,8 +346,27 @@ export const KitchenItemBuilder: React.FC<Props> = ({
         {/* Components count badge */}
         <div className="flex items-center gap-2">
           <span className="font-bold text-orange-900 bg-orange-100/90 border border-orange-300 px-2.5 py-1 rounded-lg text-xs font-mono">
-            {components.length} أصناف مضافة
+            {components.length} إضافات مسجلة
           </span>
+        </div>
+      </div>
+
+      {/* Reassurance Banner regarding متر جر and Workshop Cost Privacy */}
+      <div className="bg-amber-100/80 border border-amber-300 rounded-xl p-3 flex items-start gap-2.5 text-xs text-amber-950">
+        <div className="p-1.5 bg-amber-200 text-amber-900 rounded-lg shrink-0 mt-0.5">
+          <ShieldCheck className="w-4 h-4 text-amber-800" />
+        </div>
+        <div className="space-y-1 leading-relaxed">
+          <div className="font-bold flex items-center gap-1.5 text-amber-950">
+            <span>طريقة حساب المطبخ: المقاس بمتر الجر يتبعه الإضافات الاختيارية</span>
+          </div>
+          <p className="text-[11px] text-amber-900">
+            يُحسب المطبخ أساساً: <strong className="font-bold underline">المقاس بمتر الجر × سعر المتر</strong> (مثلاً 9 متر جر × 100$ = 900$) ويتبعه <strong>الإضافات الاختيارية</strong> (الرخام، المفصلات، المسكات، السلال...).
+          </p>
+          <div className="flex items-center gap-1.5 text-[10px] bg-white/70 px-2 py-1 rounded border border-amber-300/60 font-semibold text-amber-900 mt-1">
+            <Lock className="w-3 h-3 text-amber-700 shrink-0" />
+            <span><strong>سر المهنة:</strong> التكلفة لا تظهر إطلاقاً في فاتورة الزبون لأنها مسجلة في فواتير الشراء، وبمزامنة المشتريات مع المبيعات يحسب النظام صافي الأرباح تلقائياً في قائمة الأرباح والخسائر.</span>
+          </div>
         </div>
       </div>
 
@@ -433,7 +496,7 @@ export const KitchenItemBuilder: React.FC<Props> = ({
         <div className="bg-orange-100/50 p-2.5 rounded-lg border border-orange-200 space-y-1.5">
           <span className="text-[11px] font-bold text-orange-950 flex items-center gap-1">
             <Sparkles className="w-3 h-3 text-orange-600" />
-            <span>إضافة سريعة لأصناف وخامات شائعة في تفصيل المطابخ:</span>
+            <span>إضافة سريعة للإضافات الاختيارية الشائعة (رخام، مفصلات، مسكات، سلال):</span>
           </span>
           <div className="flex flex-wrap gap-1.5">
             {PRESET_COMPONENTS.map((preset, idx) => {
@@ -452,16 +515,21 @@ export const KitchenItemBuilder: React.FC<Props> = ({
                       unitPrice: preset.unitPrice,
                     })
                   }
-                  className={`px-2 py-1 rounded-md text-[11px] font-medium transition flex items-center gap-1 border ${
+                  className={`px-2 py-1 rounded-md text-[11px] font-medium transition flex items-center gap-1 border cursor-pointer ${
                     isAlreadyAdded
                       ? 'bg-orange-200/80 text-orange-950 border-orange-300 font-bold'
                       : 'bg-white hover:bg-orange-100/80 text-slate-700 border-orange-200 shadow-2xs'
                   }`}
                   title={`إضافة ${preset.name} بسعر ${formatCurrency(preset.unitPrice, currency)}`}
                 >
-                  <Plus className="w-3 h-3 text-orange-600" />
+                  <Plus className="w-3 h-3 text-orange-600 shrink-0" />
+                  {preset.badge && (
+                    <span className="text-[9px] bg-orange-100 text-orange-900 border border-orange-200 font-bold px-1 py-0.2 rounded shrink-0">
+                      {preset.badge}
+                    </span>
+                  )}
                   <span>{preset.name}</span>
-                  <span className="font-mono text-[10px] text-slate-500">
+                  <span className="font-mono text-[10px] text-slate-500 font-bold">
                     ({formatCurrency(preset.unitPrice, currency)})
                   </span>
                 </button>
@@ -470,10 +538,15 @@ export const KitchenItemBuilder: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* نموذج إضافة صنف يدوي مخصص */}
+        {/* نموذج إضافة صنف يدوي مخصص (بدون وسم form لتجنب تداخل النماذج) */}
         {showAddForm && (
-          <form
-            onSubmit={handleCustomSubmit}
+          <div
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleCustomSubmit();
+              }
+            }}
             className="p-3 bg-white rounded-xl border border-orange-300 shadow-xs space-y-3 animate-in fade-in"
           >
             <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
@@ -596,13 +669,14 @@ export const KitchenItemBuilder: React.FC<Props> = ({
                 إلغاء
               </button>
               <button
-                type="submit"
-                className="px-4 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded font-bold text-xs shadow-xs"
+                type="button"
+                onClick={() => handleCustomSubmit()}
+                className="px-4 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded font-bold text-xs shadow-xs cursor-pointer active:scale-95 transition"
               >
                 حفظ وإضافة الصنف للمطبخ
               </button>
             </div>
-          </form>
+          </div>
         )}
 
         {/* قائمة الأصناف المضافة */}
@@ -613,12 +687,21 @@ export const KitchenItemBuilder: React.FC<Props> = ({
                 <thead>
                   <tr className="bg-orange-100/70 text-orange-950 border-b border-orange-200 font-bold">
                     <th className="p-2 w-8 text-center">#</th>
-                    <th className="p-2">اسم الصنف / الخامة في تصنيع المطبخ</th>
-                    <th className="p-2 text-center w-24">الكمية</th>
-                    <th className="p-2 text-center w-24">الوحدة</th>
-                    <th className="p-2 text-center w-28">تكلفة الورشة</th>
-                    <th className="p-2 text-center w-32">سعر بيع الزبون</th>
-                    <th className="p-2 text-left w-32">الإجمالي</th>
+                    <th className="p-2">الإضافة / المادة الاختيارية (رخام، مفصلات، مسكات...)</th>
+                    <th className="p-2 text-center w-20">الكمية</th>
+                    <th className="p-2 text-center w-20">الوحدة</th>
+                    <th className="p-2 text-center w-36 bg-amber-200/40 text-amber-950">
+                      <span className="flex items-center justify-center gap-1">
+                        <Lock className="w-3 h-3 text-amber-700" />
+                        <span>تكلفة الورشة (خاص 🔒)</span>
+                      </span>
+                    </th>
+                    <th className="p-2 text-center w-36 bg-orange-200/50 text-orange-950 font-black">
+                      <span className="flex items-center justify-center gap-1">
+                        <span>سعر بيع الزبون 💵</span>
+                      </span>
+                    </th>
+                    <th className="p-2 text-left w-28">إجمالي الزبون</th>
                     <th className="p-2 text-center w-12">حذف</th>
                   </tr>
                 </thead>
