@@ -80,6 +80,15 @@ export interface OrderItem {
   };
 }
 
+export interface OrderPaymentRecord {
+  id: string;
+  amount: number;
+  date: string; // ISO date string or formatted date
+  note?: string; // e.g. 'دفعة مقدمة / عربون', 'سداد دفعة'
+  paymentMethod?: 'cash' | 'bank' | 'check' | 'other';
+  remainingAfter?: number; // الرصيد المتبقي بعد الدفعة
+}
+
 export interface CustomerOrder {
   id: string;
   orderNumber: string;
@@ -88,7 +97,7 @@ export interface CustomerOrder {
   customerAddress: string;
   items: OrderItem[];
   discount: number; // خصم مالي
-  deposit: number; // الدفعة المقدمة / العربون
+  deposit: number; // الدفعة المقدمة / إجمالي المقبوض
   taxRate: number; // نسبة الضريبة إن وجدت %
   status: OrderStatus;
   deliveryDate?: string;
@@ -99,10 +108,13 @@ export interface CustomerOrder {
   finalSellingPrice: number; // إجمالي فاتورة البيع للزبون
   netProfit: number; // صافي الربح = finalSellingPrice - totalCost
   remainingBalance: number;
+  payments?: OrderPaymentRecord[]; // سجل وتفصيل الدفعات كل واحدة على حدة
   syncedWithPurchases?: boolean; // هل تم حساب التكلفة ضمناً من فواتير الشراء
   linkedPurchaseInvoiceId?: string; // معرف فاتورة الشراء المرتبطة
   currency?: string; // عملة الفاتورة المحددة (مثلاً $ أو ل.س)
   exchangeRate?: number; // سعر الصرف وقت تسجيل الفاتورة إن وجد
+  customerSignature?: string; // صورة توقيع الزبون باللمس
+  workshopSignature?: string; // صورة توقيع وختم الورشة باللمس
 }
 
 export interface WorkshopSettings {
@@ -233,6 +245,15 @@ export interface PurchaseInvoiceItem {
   totalPrice: number;
 }
 
+export interface SupplierPaymentRecord {
+  id: string;
+  amount: number;
+  date: string; // ISO date string or formatted date
+  note?: string; // e.g. 'سداد دفعة للمورد', 'دفعة شيك'
+  paymentMethod?: 'cash' | 'bank' | 'check' | 'credit';
+  remainingAfter?: number; // الرصيد المتبقي بعد الدفعة
+}
+
 export interface SupplierPurchaseInvoice {
   id: string;
   invoiceNumber: string; // e.g. PUR-201
@@ -246,11 +267,14 @@ export interface SupplierPurchaseInvoice {
   totalAmount: number;
   paidAmount: number;
   remainingAmount: number;
+  payments?: SupplierPaymentRecord[]; // سجل وتفصيل دفعات المورد كل وحدة على حدة
   paymentStatus: PurchasePaymentStatus;
   paymentMethod?: 'cash' | 'bank' | 'check' | 'credit';
   notes?: string;
   currency?: string; // عملة فاتورة المشتريات ($ أو ل.س)
   exchangeRate?: number;
+  receiverSignature?: string; // توقيع المستلم باللمس
+  supplierSignature?: string; // توقيع مندوب المورد باللمس
   createdAt: string;
 }
 

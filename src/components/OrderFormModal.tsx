@@ -132,8 +132,105 @@ export const OrderFormModal: React.FC<Props> = ({
 
   // Financials State
   const [discount, setDiscount] = useState<number>(initialOrder?.discount || 0);
+  const [discountInput, setDiscountInput] = useState<string>(
+    initialOrder?.discount !== undefined && initialOrder.discount !== 0
+      ? String(initialOrder.discount)
+      : ''
+  );
   const [deposit, setDeposit] = useState<number>(initialOrder?.deposit || 0);
+  const [depositInput, setDepositInput] = useState<string>(
+    initialOrder?.deposit !== undefined && initialOrder.deposit !== 0
+      ? String(initialOrder.deposit)
+      : ''
+  );
   const [taxRate, setTaxRate] = useState<number>(initialOrder?.taxRate || 0);
+
+  // Synchronize when initialOrder changes (e.g., editing different order)
+  useEffect(() => {
+    if (initialOrder) {
+      setDiscount(initialOrder.discount || 0);
+      setDiscountInput(
+        initialOrder.discount !== undefined && initialOrder.discount !== 0
+          ? String(initialOrder.discount)
+          : ''
+      );
+      setDeposit(initialOrder.deposit || 0);
+      setDepositInput(
+        initialOrder.deposit !== undefined && initialOrder.deposit !== 0
+          ? String(initialOrder.deposit)
+          : ''
+      );
+    }
+  }, [initialOrder]);
+
+  // Helper to normalize decimal strings across Arabic/English keyboards (handles . , ٫ and Arabic numerals)
+  const normalizeDecimalInput = (raw: string): string => {
+    let val = raw.replace(/[\u066B\u060C,]/g, '.');
+    val = val.replace(/[\u0660-\u0669]/g, (d) => (d.charCodeAt(0) - 0x0660).toString());
+    val = val.replace(/[\u06F0-\u06F9]/g, (d) => (d.charCodeAt(0) - 0x06F0).toString());
+    return val;
+  };
+
+  const handleDiscountChange = (valStr: string) => {
+    const norm = normalizeDecimalInput(valStr);
+    // Allow empty string, or numbers with optional decimal point (e.g. "", ".", "0.", "0.5", "0.25")
+    if (norm === '' || /^[0-9]*\.?[0-9]*$/.test(norm)) {
+      setDiscountInput(norm);
+      if (norm === '' || norm === '.') {
+        setDiscount(0);
+      } else {
+        const parsed = parseFloat(norm);
+        setDiscount(isNaN(parsed) || parsed < 0 ? 0 : parsed);
+      }
+    }
+  };
+
+  const handleDiscountBlur = () => {
+    const norm = normalizeDecimalInput(discountInput);
+    if (norm === '' || norm === '.') {
+      setDiscountInput('');
+      setDiscount(0);
+      return;
+    }
+    const parsed = parseFloat(norm);
+    if (isNaN(parsed) || parsed <= 0) {
+      setDiscountInput('');
+      setDiscount(0);
+    } else {
+      setDiscount(parsed);
+      setDiscountInput(String(parsed));
+    }
+  };
+
+  const handleDepositChange = (valStr: string) => {
+    const norm = normalizeDecimalInput(valStr);
+    if (norm === '' || /^[0-9]*\.?[0-9]*$/.test(norm)) {
+      setDepositInput(norm);
+      if (norm === '' || norm === '.') {
+        setDeposit(0);
+      } else {
+        const parsed = parseFloat(norm);
+        setDeposit(isNaN(parsed) || parsed < 0 ? 0 : parsed);
+      }
+    }
+  };
+
+  const handleDepositBlur = () => {
+    const norm = normalizeDecimalInput(depositInput);
+    if (norm === '' || norm === '.') {
+      setDepositInput('');
+      setDeposit(0);
+      return;
+    }
+    const parsed = parseFloat(norm);
+    if (isNaN(parsed) || parsed <= 0) {
+      setDepositInput('');
+      setDeposit(0);
+    } else {
+      setDeposit(parsed);
+      setDepositInput(String(parsed));
+    }
+  };
 
   // Recalculate an item when inputs change
   const updateItem = (id: string, updates: Partial<OrderItem>) => {
@@ -390,11 +487,27 @@ export const OrderFormModal: React.FC<Props> = ({
       finalSellingPrice: totals.finalSellingPrice,
       netProfit: totals.netProfit,
       remainingBalance: totals.remainingBalance,
+      payments: initialOrder?.payments && initialOrder.payments.length > 0
+        ? initialOrder.payments
+        : totals.deposit > 0
+        ? [
+            {
+              id: 'pmt-init-' + Date.now(),
+              amount: totals.deposit,
+              date: initialOrder?.createdAt || new Date().toISOString(),
+              note: 'الدفعة الأولى (العربون)',
+              paymentMethod: 'cash',
+              remainingAfter: totals.remainingBalance,
+            },
+          ]
+        : [],
       createdAt: initialOrder?.createdAt || new Date().toISOString(),
       syncedWithPurchases: items.some((i) => !!i.syncedPurchaseInfo),
       linkedPurchaseInvoiceId: initialOrder?.linkedPurchaseInvoiceId,
       currency: orderCurrency,
       exchangeRate: settings.usdToSypRate || 14500,
+      customerSignature: initialOrder?.customerSignature,
+      workshopSignature: initialOrder?.workshopSignature,
     };
 
     let linkedInvoice: SupplierPurchaseInvoice | undefined = undefined;
@@ -1028,34 +1141,113 @@ export const OrderFormModal: React.FC<Props> = ({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
               {/* Discount Input */}
               <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
-                <label className="block text-slate-300 font-semibold mb-1">
-                  خصم مالي ممنوح للزبون ({currency}):
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-slate-300 font-semibold text-xs">
+                    خصم مالي ممنوح للزبون ({currency}):
+                  </label>
+                  {discount > 0 && (
+                    <span className="text-[10px] text-amber-400 font-mono font-bold bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-800/50">
+                      -{formatCurrency(discount, currency)}
+                    </span>
+                  )}
+                </div>
                 <input
-                  type="number"
-                  step="any"
-                  min="0"
-                  value={discount || ''}
-                  onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                  placeholder="0"
-                  className="w-full text-base font-bold font-mono px-3 py-1.5 bg-slate-900 border border-slate-600 rounded-lg text-amber-300"
+                  type="text"
+                  inputMode="decimal"
+                  value={discountInput}
+                  onChange={(e) => handleDiscountChange(e.target.value)}
+                  onBlur={handleDiscountBlur}
+                  onFocus={(e) => {
+                    const target = e.currentTarget;
+                    setTimeout(() => {
+                      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 250);
+                  }}
+                  placeholder="0.00"
+                  dir="ltr"
+                  className="w-full text-base font-bold font-mono px-3 py-1.5 bg-slate-900 border border-slate-600 rounded-lg text-amber-300 text-center focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
                 />
+                <div className="flex items-center justify-between mt-1 text-[10px] text-slate-400">
+                  <span className="text-amber-200/80">يقبل الكسور (0.5 أو 0.25) والفاصلة</span>
+                  {discountInput && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDiscountInput('');
+                        setDiscount(0);
+                      }}
+                      className="text-amber-400 hover:text-amber-300 underline font-medium"
+                    >
+                      إلغاء الخصم
+                    </button>
+                  )}
+                </div>
+                {/* Quick preset buttons for convenience */}
+                <div className="flex flex-wrap items-center gap-1 mt-2 pt-1.5 border-t border-slate-700/60">
+                  <span className="text-[10px] text-slate-400">خيارات سريعة:</span>
+                  {[0.5, 1, 2, 5, 10].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => {
+                        setDiscount(preset);
+                        setDiscountInput(String(preset));
+                      }}
+                      className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors font-mono ${
+                        discount === preset
+                          ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold'
+                          : 'bg-slate-900/80 text-amber-300 border-slate-700 hover:bg-slate-700'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Deposit Input */}
               <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
-                <label className="block text-slate-300 font-semibold mb-1">
-                  الدفعة المقدمة (العربون المستلم) ({currency}):
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-slate-300 font-semibold text-xs">
+                    الدفعة المقدمة (العربون) ({currency}):
+                  </label>
+                  {deposit > 0 && (
+                    <span className="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/50">
+                      {formatCurrency(deposit, currency)}
+                    </span>
+                  )}
+                </div>
                 <input
-                  type="number"
-                  step="any"
-                  min="0"
-                  value={deposit || ''}
-                  onChange={(e) => setDeposit(parseFloat(e.target.value) || 0)}
-                  placeholder="0"
-                  className="w-full text-base font-bold font-mono px-3 py-1.5 bg-slate-900 border border-slate-600 rounded-lg text-emerald-400"
+                  type="text"
+                  inputMode="decimal"
+                  value={depositInput}
+                  onChange={(e) => handleDepositChange(e.target.value)}
+                  onBlur={handleDepositBlur}
+                  onFocus={(e) => {
+                    const target = e.currentTarget;
+                    setTimeout(() => {
+                      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 250);
+                  }}
+                  placeholder="0.00"
+                  dir="ltr"
+                  className="w-full text-base font-bold font-mono px-3 py-1.5 bg-slate-900 border border-slate-600 rounded-lg text-emerald-400 text-center focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
                 />
+                <div className="flex items-center justify-between mt-1 text-[10px] text-slate-400">
+                  <span>يقبل الفواصل العشرية (مثال: 10.5)</span>
+                  {depositInput && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDepositInput('');
+                        setDeposit(0);
+                      }}
+                      className="text-emerald-400 hover:text-emerald-300 underline font-medium"
+                    >
+                      تصفير
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Remaining Balance */}

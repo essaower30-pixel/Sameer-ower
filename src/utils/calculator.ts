@@ -1,4 +1,13 @@
-import { OrderItem, CustomerOrder, ProductCategory, MeasurementUnit, ItemOptions } from '../types';
+import {
+  OrderItem,
+  CustomerOrder,
+  ProductCategory,
+  MeasurementUnit,
+  ItemOptions,
+  OrderPaymentRecord,
+  SupplierPurchaseInvoice,
+  SupplierPaymentRecord,
+} from '../types';
 
 /**
  * Calculates item metrics based on dimensions and pricing
@@ -166,3 +175,55 @@ export function formatCurrency(amount: number, currency: string = 'د.أ'): stri
     maximumFractionDigits: 2,
   })} ${currency}`;
 }
+
+/**
+ * Helper to retrieve or synthesize structured payments breakdown for a customer order.
+ * Ensures backward compatibility with existing orders that only stored a lump sum deposit.
+ */
+export function getOrderPayments(order: Partial<CustomerOrder>): OrderPaymentRecord[] {
+  if (order.payments && order.payments.length > 0) {
+    return order.payments;
+  }
+  const dep = Number(order.deposit || 0);
+  if (dep > 0) {
+    const finalPrice = Number(order.finalSellingPrice || order.subtotal || dep);
+    const remaining = Math.max(0, Number((finalPrice - dep).toFixed(2)));
+    return [
+      {
+        id: 'initial-deposit-' + (order.id || '1'),
+        amount: dep,
+        date: order.createdAt || new Date().toISOString(),
+        note: 'الدفعة الأولى (العربون)',
+        paymentMethod: 'cash',
+        remainingAfter: remaining,
+      },
+    ];
+  }
+  return [];
+}
+
+/**
+ * Helper to retrieve or synthesize structured payments breakdown for a supplier purchase invoice.
+ */
+export function getSupplierPayments(invoice: Partial<SupplierPurchaseInvoice>): SupplierPaymentRecord[] {
+  if (invoice.payments && invoice.payments.length > 0) {
+    return invoice.payments;
+  }
+  const paid = Number(invoice.paidAmount || 0);
+  if (paid > 0) {
+    const total = Number(invoice.totalAmount || paid);
+    const remaining = Math.max(0, Number((total - paid).toFixed(2)));
+    return [
+      {
+        id: 'initial-paid-' + (invoice.id || '1'),
+        amount: paid,
+        date: invoice.invoiceDate || invoice.createdAt || new Date().toISOString(),
+        note: 'دفعة سداد أولى للمورد',
+        paymentMethod: invoice.paymentMethod || 'cash',
+        remainingAfter: remaining,
+      },
+    ];
+  }
+  return [];
+}
+

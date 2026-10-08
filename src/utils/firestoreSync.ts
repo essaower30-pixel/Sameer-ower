@@ -4,9 +4,8 @@ import {
   getDocs,
   setDoc,
   deleteDoc,
-  writeBatch,
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, handleFirestoreError, OperationType } from '../firebase';
 import { CustomerOrder, SupplierPurchaseInvoice, WorkshopExpense, WorkshopSettings } from '../types';
 
 export interface SyncStatus {
@@ -17,65 +16,72 @@ export interface SyncStatus {
 
 // 1. Sync Settings to Firestore
 export async function syncSettingsToFirestore(settings: WorkshopSettings): Promise<void> {
+  const path = 'workshop_settings/main_profile';
   try {
     await setDoc(doc(db, 'workshop_settings', 'main_profile'), settings);
   } catch (err) {
-    console.warn('Error syncing settings to Firestore:', err);
+    handleFirestoreError(err, OperationType.WRITE, path);
     throw err;
   }
 }
 
 // 2. Sync Orders to Firestore
 export async function syncOrderToFirestore(order: CustomerOrder): Promise<void> {
+  const path = `customer_orders/${order.id}`;
   try {
     await setDoc(doc(db, 'customer_orders', order.id), order);
   } catch (err) {
-    console.warn('Error syncing order to Firestore:', err);
+    handleFirestoreError(err, OperationType.WRITE, path);
     throw err;
   }
 }
 
 export async function deleteOrderFromFirestore(orderId: string): Promise<void> {
+  const path = `customer_orders/${orderId}`;
   try {
     await deleteDoc(doc(db, 'customer_orders', orderId));
   } catch (err) {
-    console.warn('Error deleting order from Firestore:', err);
+    handleFirestoreError(err, OperationType.DELETE, path);
   }
 }
 
 // 3. Sync Supplier Invoices to Firestore
 export async function syncPurchaseInvoiceToFirestore(invoice: SupplierPurchaseInvoice): Promise<void> {
+  const path = `supplier_invoices/${invoice.id}`;
   try {
     await setDoc(doc(db, 'supplier_invoices', invoice.id), invoice);
   } catch (err) {
-    console.warn('Error syncing supplier invoice to Firestore:', err);
+    handleFirestoreError(err, OperationType.WRITE, path);
     throw err;
   }
 }
 
 export async function deletePurchaseInvoiceFromFirestore(invoiceId: string): Promise<void> {
+  const path = `supplier_invoices/${invoiceId}`;
   try {
     await deleteDoc(doc(db, 'supplier_invoices', invoiceId));
   } catch (err) {
-    console.warn('Error deleting supplier invoice from Firestore:', err);
+    handleFirestoreError(err, OperationType.DELETE, path);
   }
 }
 
 // 4. Sync Expenses to Firestore
 export async function syncExpenseToFirestore(expense: WorkshopExpense): Promise<void> {
+  const path = `workshop_expenses/${expense.id}`;
   try {
     await setDoc(doc(db, 'workshop_expenses', expense.id), expense);
   } catch (err) {
-    console.warn('Error syncing expense to Firestore:', err);
+    handleFirestoreError(err, OperationType.WRITE, path);
     throw err;
   }
 }
 
 export async function deleteExpenseFromFirestore(expenseId: string): Promise<void> {
+  const path = `workshop_expenses/${expenseId}`;
   try {
     await deleteDoc(doc(db, 'workshop_expenses', expenseId));
   } catch (err) {
-    console.warn('Error deleting expense from Firestore:', err);
+    handleFirestoreError(err, OperationType.DELETE, path);
   }
 }
 
@@ -88,7 +94,6 @@ export async function backupAllToFirestore(data: {
 }): Promise<void> {
   await syncSettingsToFirestore(data.settings);
 
-  // Batch or sequential
   for (const o of data.orders) {
     await syncOrderToFirestore(o);
   }
@@ -130,7 +135,7 @@ export async function loadAllFromFirestore(): Promise<{
 
     return { settings, orders, purchases, expenses };
   } catch (err) {
-    console.warn('Failed to load from Firestore:', err);
+    handleFirestoreError(err, OperationType.GET, 'all_collections');
     return null;
   }
 }

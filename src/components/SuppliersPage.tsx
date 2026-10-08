@@ -55,7 +55,20 @@ export const SuppliersPage: React.FC<Props> = ({
 
   // Quick Pay Modal State
   const [quickPayInvoice, setQuickPayInvoice] = useState<SupplierPurchaseInvoice | null>(null);
-  const [quickPayAmount, setQuickPayAmount] = useState<number | ''>('');
+  const [quickPayAmount, setQuickPayAmount] = useState<string>('');
+
+  const normalizeQuickPayInput = (val: string) => {
+    let clean = val.replace(/[\u066B\u060C,]/g, '.');
+    clean = clean.replace(/[\u0660-\u0669]/g, (d) =>
+      (d.charCodeAt(0) - 0x0660).toString()
+    );
+    clean = clean.replace(/[\u06F0-\u06F9]/g, (d) =>
+      (d.charCodeAt(0) - 0x06F0).toString()
+    );
+    if (clean === '' || /^[0-9]*\.?[0-9]*$/.test(clean)) {
+      setQuickPayAmount(clean);
+    }
+  };
 
   // Filtered Invoices
   const filteredInvoices = invoices.filter((inv) => {
@@ -74,8 +87,9 @@ export const SuppliersPage: React.FC<Props> = ({
 
   const handleConfirmQuickPay = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!quickPayInvoice || !quickPayAmount || quickPayAmount <= 0) return;
-    onQuickPay(quickPayInvoice.id, Number(quickPayAmount));
+    const num = parseFloat(quickPayAmount);
+    if (!quickPayInvoice || isNaN(num) || num <= 0) return;
+    onQuickPay(quickPayInvoice.id, num);
     setQuickPayInvoice(null);
     setQuickPayAmount('');
   };
@@ -334,7 +348,7 @@ export const SuppliersPage: React.FC<Props> = ({
                       type="button"
                       onClick={() => {
                         setQuickPayInvoice(invoice);
-                        setQuickPayAmount(invoice.remainingAmount);
+                        setQuickPayAmount(String(invoice.remainingAmount));
                       }}
                       className="px-2.5 py-1 text-xs font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-lg transition-colors flex items-center gap-1"
                     >
@@ -372,8 +386,14 @@ export const SuppliersPage: React.FC<Props> = ({
 
       {/* Quick Pay Mini Modal */}
       {quickPayInvoice && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-5 w-full max-w-sm border border-slate-200 shadow-2xl text-right animate-in fade-in zoom-in-95">
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs overflow-y-auto overscroll-contain flex flex-col items-center justify-start sm:justify-center p-3 sm:p-4 pt-4 sm:pt-8 pb-36 sm:pb-8"
+          onClick={() => setQuickPayInvoice(null)}
+        >
+          <div
+            className="bg-white rounded-2xl p-5 w-full max-w-sm border border-slate-200 shadow-2xl text-right animate-in fade-in zoom-in-95 my-2 sm:my-0"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="font-bold text-slate-900 text-sm mb-1">
               تسجيل دفعة سداد للمورد
             </h3>
@@ -393,31 +413,56 @@ export const SuppliersPage: React.FC<Props> = ({
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  المبلغ المدفوع الآن ({currency}):
+                  مربع السداد - المبلغ المدفوع الآن ({currency}):
                 </label>
                 <input
-                  type="number"
-                  min="1"
-                  max={quickPayInvoice.remainingAmount}
-                  step="any"
+                  type="text"
+                  inputMode="decimal"
+                  dir="ltr"
                   required
                   value={quickPayAmount}
-                  onChange={(e) => setQuickPayAmount(Number(e.target.value) || '')}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold font-mono focus:ring-2 focus:ring-amber-500"
+                  onChange={(e) => normalizeQuickPayInput(e.target.value)}
+                  onFocus={(e) => {
+                    const target = e.currentTarget;
+                    setTimeout(() => {
+                      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 250);
+                  }}
+                  placeholder="0.00"
+                  className="w-full px-3 py-2 border-2 border-amber-500 rounded-lg text-base font-bold font-mono text-center focus:ring-2 focus:ring-amber-500"
                 />
+                <div className="flex items-center gap-1.5 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setQuickPayAmount(String(quickPayInvoice.remainingAmount))}
+                    className="text-[11px] px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-bold font-mono hover:bg-amber-100"
+                  >
+                    كامل المتبقي ({quickPayInvoice.remainingAmount})
+                  </button>
+                  {quickPayInvoice.remainingAmount >= 2 && (
+                    <button
+                      type="button"
+                      onClick={() => setQuickPayAmount(String(Number((quickPayInvoice.remainingAmount / 2).toFixed(2))))}
+                      className="text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-bold font-mono hover:bg-slate-200"
+                    >
+                      النصف
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setQuickPayInvoice(null)}
-                  className="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg"
+                  className="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
                 >
                   إلغاء
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-lg shadow-xs"
+                  disabled={!quickPayAmount || parseFloat(quickPayAmount) <= 0}
+                  className="px-4 py-1.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 rounded-lg shadow-xs cursor-pointer"
                 >
                   تأكيد السداد
                 </button>

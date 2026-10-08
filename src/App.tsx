@@ -9,7 +9,10 @@ import {
   SupplierPurchaseInvoice,
   DEFAULT_SETTINGS,
   SUPPORTED_CURRENCIES,
+  OrderPaymentRecord,
+  SupplierPaymentRecord,
 } from './types';
+import { getOrderPayments, getSupplierPayments } from './utils/calculator';
 import { INITIAL_ORDERS, INITIAL_EXPENSES, INITIAL_PURCHASE_INVOICES } from './data/mockData';
 import { Navbar, ActiveNavTab } from './components/Navbar';
 import { OrderCard } from './components/OrderCard';
@@ -19,6 +22,7 @@ import { FinancesPage } from './components/FinancesPage';
 import { SuppliersPage } from './components/SuppliersPage';
 import { PurchaseInvoiceModal } from './components/PurchaseInvoiceModal';
 import { PurchaseInvoiceViewModal } from './components/PurchaseInvoiceViewModal';
+import { CustomerPaymentModal } from './components/CustomerPaymentModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { testFirestoreConnection } from './firebase';
 import {
@@ -117,6 +121,7 @@ export default function App() {
   const [editingOrder, setEditingOrder] = useState<CustomerOrder | null>(null);
   const [transferItems, setTransferItems] = useState<OrderItem[]>([]);
   const [viewingInvoiceOrder, setViewingInvoiceOrder] = useState<CustomerOrder | null>(null);
+  const [collectingPaymentOrder, setCollectingPaymentOrder] = useState<CustomerOrder | null>(null);
 
   // Modals state for Supplier Purchase Invoices
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
@@ -227,6 +232,84 @@ export default function App() {
     setTransferItems([]);
   };
 
+  // Direct order updater for invoices (e.g. mobile signature)
+  const handleUpdateOrderDirect = (updatedOrder: CustomerOrder) => {
+    setOrders((prev) => {
+      const existsIndex = prev.findIndex((o) => o.id === updatedOrder.id);
+      if (existsIndex >= 0) {
+        const updated = [...prev];
+        updated[existsIndex] = updatedOrder;
+        return updated;
+      }
+      return [updatedOrder, ...prev];
+    });
+    setViewingInvoiceOrder(updatedOrder);
+  };
+
+  // Quick Collect Payment from Customer (تحصيل دفعة مالية من الزبون)
+  const handleQuickCollectCustomerPayment = (
+    orderId: string,
+    collectedAmount: number,
+    paymentNote?: string,
+    markAsDelivered?: boolean,
+    paymentMethod?: 'cash' | 'bank' | 'check' | 'other',
+    paymentDate?: string
+  ) => {
+    let targetUpdatedOrder: CustomerOrder | null = null;
+
+    setOrders((prev) =>
+      prev.map((order) => {
+        if (order.id !== orderId) return order;
+
+        const existingPayments = getOrderPayments(order);
+        const newDeposit = Math.min(
+          order.finalSellingPrice,
+          Number(((order.deposit || 0) + collectedAmount).toFixed(2))
+        );
+        const newRemaining = Math.max(
+          0,
+          Number((order.finalSellingPrice - newDeposit).toFixed(2))
+        );
+
+        const pmtRecord: OrderPaymentRecord = {
+          id: 'pmt-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+          amount: collectedAmount,
+          date: paymentDate || new Date().toISOString(),
+          note: paymentNote || `دفعة سداد #${existingPayments.length + 1}`,
+          paymentMethod: paymentMethod || 'cash',
+          remainingAfter: newRemaining,
+        };
+
+        const updatedPayments = [...existingPayments, pmtRecord];
+
+        let updatedNotes = order.notes || '';
+        if (paymentNote) {
+          const dateStr = new Date(pmtRecord.date).toLocaleDateString('ar-EG');
+          const noteEntry = `[تحصيل دفعة: +${collectedAmount} ${
+            order.currency || settings.currency
+          } (${paymentNote}) بتاريخ ${dateStr}]`;
+          updatedNotes = updatedNotes ? `${updatedNotes}\n${noteEntry}` : noteEntry;
+        }
+
+        const updated: CustomerOrder = {
+          ...order,
+          deposit: newDeposit,
+          remainingBalance: newRemaining,
+          payments: updatedPayments,
+          notes: updatedNotes,
+          status: markAsDelivered && newRemaining === 0 ? 'completed' : order.status,
+        };
+
+        targetUpdatedOrder = updated;
+        return updated;
+      })
+    );
+
+    if (viewingInvoiceOrder && viewingInvoiceOrder.id === orderId && targetUpdatedOrder) {
+      setViewingInvoiceOrder(targetUpdatedOrder);
+    }
+  };
+
   const handleDeleteOrder = (orderId: string) => {
     if (confirm('هل أنت متأكد من رغبتك في حذف هذا الطلب؟')) {
       setOrders((prev) => prev.filter((o) => o.id !== orderId));
@@ -284,25 +367,58 @@ export default function App() {
     setEditingPurchaseInvoice(null);
   };
 
+  // Direct purchase invoice updater (e.g. mobile signature)
+  const handleUpdatePurchaseInvoiceDirect = (updatedInvoice: SupplierPurchaseInvoice) => {
+    setPurchaseInvoices((prev) => {
+      const existsIndex = prev.findIndex((p) => p.id === updatedInvoice.id);
+      if (existsIndex >= 0) {
+        const updated = [...prev];
+        updated[existsIndex] = updatedInvoice;
+        return updated;
+      }
+      return [updatedInvoice, ...prev];
+    });
+    setViewingPurchaseInvoice(updatedInvoice);
+  };
+
   const handleDeletePurchaseInvoice = (invoiceId: string) => {
     if (confirm('هل أنت متأكد من رغبتك في حذف فاتورة الشراء هذه؟')) {
       setPurchaseInvoices((prev) => prev.filter((p) => p.id !== invoiceId));
     }
   };
 
-  const handleQuickPayPurchaseInvoice = (invoiceId: string, paidMore: number) => {
+  const handleQuickPayPurchaseInvoice = (
+    invoiceId: string,
+    paidMore: number,
+    paymentNote?: string,
+    paymentMethod?: 'cash' | 'bank' | 'check' | 'credit'
+  ) => {
     setPurchaseInvoices((prev) =>
       prev.map((inv) => {
         if (inv.id !== invoiceId) return inv;
-        const newPaid = Math.min(inv.totalAmount, inv.paidAmount + paidMore);
-        const newRemaining = Math.max(0, inv.totalAmount - newPaid);
+        const existingPayments = getSupplierPayments(inv);
+        const newPaid = Math.min(
+          inv.totalAmount,
+          Number(((inv.paidAmount || 0) + paidMore).toFixed(2))
+        );
+        const newRemaining = Math.max(0, Number((inv.totalAmount - newPaid).toFixed(2)));
         const newStatus =
           newRemaining === 0 ? 'paid' : newPaid > 0 ? 'partial' : 'unpaid';
+
+        const pmtRecord: SupplierPaymentRecord = {
+          id: 'spmt-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+          amount: paidMore,
+          date: new Date().toISOString(),
+          note: paymentNote || `دفعة سداد للمورد #${existingPayments.length + 1}`,
+          paymentMethod: paymentMethod || inv.paymentMethod || 'cash',
+          remainingAfter: newRemaining,
+        };
 
         return {
           ...inv,
           paidAmount: newPaid,
           remainingAmount: newRemaining,
+          payments: [...existingPayments, pmtRecord],
           paymentStatus: newStatus,
         };
       })
@@ -476,6 +592,7 @@ export default function App() {
                     onDelete={handleDeleteOrder}
                     onViewInvoice={(ord) => setViewingInvoiceOrder(ord)}
                     onStatusChange={handleStatusChange}
+                    onQuickCollect={(ord) => setCollectingPaymentOrder(ord)}
                   />
                 ))}
               </div>
@@ -589,7 +706,26 @@ export default function App() {
           order={viewingInvoiceOrder}
           settings={settings}
           currency={settings.currency}
+          onUpdateOrder={handleUpdateOrderDirect}
           onClose={() => setViewingInvoiceOrder(null)}
+        />
+      )}
+
+      {/* Customer Payment Collection Modal (تحصيل دفعة مالية من الزبون) */}
+      {collectingPaymentOrder && (
+        <CustomerPaymentModal
+          isOpen={!!collectingPaymentOrder}
+          order={collectingPaymentOrder}
+          settings={settings}
+          onClose={() => setCollectingPaymentOrder(null)}
+          onConfirm={(collectedAmount, note) => {
+            handleQuickCollectCustomerPayment(
+              collectingPaymentOrder.id,
+              collectedAmount,
+              note
+            );
+            setCollectingPaymentOrder(null);
+          }}
         />
       )}
 
@@ -614,6 +750,7 @@ export default function App() {
           invoice={viewingPurchaseInvoice}
           settings={settings}
           currency={settings.currency}
+          onUpdateInvoice={handleUpdatePurchaseInvoiceDirect}
           onClose={() => setViewingPurchaseInvoice(null)}
         />
       )}

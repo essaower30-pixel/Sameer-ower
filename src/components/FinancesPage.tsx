@@ -38,7 +38,12 @@ import {
   Coins,
   ArrowLeftRight,
   Save,
+  MessageSquare,
+  Briefcase,
+  Share2,
 } from 'lucide-react';
+import { generateFinancialReportText, openWhatsApp } from '../utils/shareUtils';
+import { WhatsAppShareModal } from './WhatsAppShareModal';
 
 export type FinanceViewTab =
   | 'overview'
@@ -97,6 +102,31 @@ export const FinancesPage: React.FC<Props> = ({
   const [rateSavedNotice, setRateSavedNotice] = useState(false);
   const [combinedCurrencyUnit, setCombinedCurrencyUnit] = useState<'$' | 'ل.س'>('$');
   const [dualViewSubTab, setDualViewSubTab] = useState<'summary' | 'orders' | 'purchases' | 'expenses'>('summary');
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+  const currentReportText = generateFinancialReportText({
+    reportType: activeTab,
+    settings,
+    orders,
+    expenses,
+    purchaseInvoices,
+    currency,
+    exchangeRate,
+  });
+
+  const handleQuickStandardWA = () => {
+    openWhatsApp({
+      text: currentReportText,
+      type: 'standard',
+    });
+  };
+
+  const handleQuickBusinessWA = () => {
+    openWhatsApp({
+      text: currentReportText,
+      type: 'business',
+    });
+  };
 
   const handleSaveRateToSettings = () => {
     if (onSaveSettings) {
@@ -266,7 +296,8 @@ export const FinancesPage: React.FC<Props> = ({
         </div>
 
         {/* Action controls */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Privacy mask */}
           <button
             type="button"
             onClick={() => setIsMasked(!isMasked)}
@@ -274,16 +305,52 @@ export const FinancesPage: React.FC<Props> = ({
             title={isMasked ? 'إظهار الأرقام' : 'إخفاء وتمويه الأرقام'}
           >
             {isMasked ? <Eye className="w-4 h-4 text-emerald-400" /> : <EyeOff className="w-4 h-4 text-slate-400" />}
-            <span>{isMasked ? 'إظهار الأرقام' : 'تمويه الأرقام'}</span>
+            <span className="hidden sm:inline">{isMasked ? 'إظهار الأرقام' : 'تمويه الأرقام'}</span>
           </button>
 
+          {/* Quick WhatsApp Standard */}
+          <button
+            type="button"
+            onClick={handleQuickStandardWA}
+            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
+            title="مشاركة التقرير المالي عبر واتساب العادي"
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span className="hidden sm:inline">واتساب عادي</span>
+            <span className="sm:hidden">واتساب</span>
+          </button>
+
+          {/* Quick WhatsApp Business */}
+          <button
+            type="button"
+            onClick={handleQuickBusinessWA}
+            className="flex items-center gap-1.5 px-3 py-2 bg-teal-700 hover:bg-teal-600 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
+            title="مشاركة التقرير المالي عبر واتساب للأعمال (WhatsApp Business)"
+          >
+            <Briefcase className="w-4 h-4" />
+            <span className="hidden sm:inline">واتساب أعمال 💼</span>
+            <span className="sm:hidden">أعمال</span>
+          </button>
+
+          {/* Detailed Share Options */}
+          <button
+            type="button"
+            onClick={() => setIsShareModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold border border-slate-700 transition-all cursor-pointer"
+            title="خيارات المشاركة ونسخ التقرير"
+          >
+            <Share2 className="w-4 h-4 text-slate-300" />
+            <span className="hidden md:inline">خيارات المشاركة</span>
+          </button>
+
+          {/* Print Button */}
           <button
             type="button"
             onClick={() => window.print()}
             className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer"
           >
             <Printer className="w-4 h-4" />
-            <span>طباعة التقرير المالي</span>
+            <span>طباعة التقرير</span>
           </button>
         </div>
       </div>
@@ -1826,6 +1893,28 @@ export const FinancesPage: React.FC<Props> = ({
             </table>
           </div>
         </div>
+      )}
+      {/* Advanced WhatsApp Sharing Modal for Financial Reports */}
+      {isShareModalOpen && (
+        <WhatsAppShareModal
+          isOpen={isShareModalOpen}
+          title="مشاركة التقرير المالي"
+          subtitle={`تقرير: ${
+            activeTab === 'profit_loss'
+              ? 'الأرباح والخسائر (P&L)'
+              : activeTab === 'dual_currency'
+              ? 'العملتين وسعر الصرف'
+              : activeTab === 'sales_report'
+              ? 'المبيعات والزبائن'
+              : activeTab === 'purchases_report'
+              ? 'المشتريات والتوريد'
+              : activeTab === 'expenses'
+              ? 'المصاريف التشغيلية'
+              : 'الملخص المالي الشامل'
+          }`}
+          messageText={currentReportText}
+          onClose={() => setIsShareModalOpen(false)}
+        />
       )}
     </div>
   );

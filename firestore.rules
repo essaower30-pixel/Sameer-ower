@@ -13,6 +13,9 @@ service cloud.firestore {
     match /workshop_expenses/{expenseId} {
       allow read, write: if true;
     }
+    match /test/{testId} {
+      allow read, write: if true;
+    }
     match /{document=**} {
       allow read, write: if false;
     }
