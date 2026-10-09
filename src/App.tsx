@@ -56,6 +56,9 @@ export default function App() {
         if (parsed.currency && !SUPPORTED_CURRENCIES.some((c) => c.code === parsed.currency)) {
           parsed.currency = '$';
         }
+        if (parsed.email === 'workshop@example.com') {
+          parsed.email = '';
+        }
         return parsed;
       }
       return DEFAULT_SETTINGS;

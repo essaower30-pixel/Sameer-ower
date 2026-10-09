@@ -64,6 +64,7 @@ export const InvoiceModal: React.FC<Props> = ({
     ownerName: settings.ownerName || '',
     managementTitle: settings.managementTitle ?? 'إدارة:',
     phone: settings.phone,
+    email: settings.email || '',
     invoiceNotes: settings.invoiceNotes || '',
     showTermsHeading: !!settings.showTermsHeading,
     hideTermsBox: !!settings.hideTermsBox,
@@ -76,6 +77,7 @@ export const InvoiceModal: React.FC<Props> = ({
       ownerName: settings.ownerName || '',
       managementTitle: settings.managementTitle ?? 'إدارة:',
       phone: settings.phone,
+      email: settings.email || '',
       invoiceNotes: settings.invoiceNotes || '',
       showTermsHeading: !!settings.showTermsHeading,
       hideTermsBox: !!settings.hideTermsBox,
@@ -90,6 +92,7 @@ export const InvoiceModal: React.FC<Props> = ({
       ownerName: headerFormData.ownerName.trim(),
       managementTitle: headerFormData.managementTitle,
       phone: headerFormData.phone.trim(),
+      email: headerFormData.email.trim(),
       invoiceNotes: headerFormData.invoiceNotes,
       showTermsHeading: headerFormData.showTermsHeading,
       hideTermsBox: headerFormData.hideTermsBox,
@@ -378,6 +381,7 @@ export const InvoiceModal: React.FC<Props> = ({
                     ownerName: settings.ownerName || '',
                     managementTitle: settings.managementTitle ?? 'إدارة:',
                     phone: settings.phone,
+                    email: settings.email || '',
                     invoiceNotes: settings.invoiceNotes || '',
                     showTermsHeading: !!settings.showTermsHeading,
                     hideTermsBox: !!settings.hideTermsBox,
@@ -471,6 +475,7 @@ export const InvoiceModal: React.FC<Props> = ({
                           ownerName: settings.ownerName || '',
                           managementTitle: settings.managementTitle ?? 'إدارة:',
                           phone: settings.phone,
+                          email: settings.email || '',
                           invoiceNotes: settings.invoiceNotes || '',
                           showTermsHeading: !!settings.showTermsHeading,
                           hideTermsBox: !!settings.hideTermsBox,
@@ -649,6 +654,7 @@ export const InvoiceModal: React.FC<Props> = ({
                                 ownerName: settings.ownerName || '',
                                 managementTitle: settings.managementTitle ?? 'إدارة:',
                                 phone: settings.phone,
+                                email: settings.email || '',
                                 invoiceNotes: settings.invoiceNotes || '',
                                 showTermsHeading: !!settings.showTermsHeading,
                                 hideTermsBox: !!settings.hideTermsBox,
@@ -684,6 +690,7 @@ export const InvoiceModal: React.FC<Props> = ({
                           ownerName: settings.ownerName || '',
                           managementTitle: settings.managementTitle ?? 'إدارة:',
                           phone: settings.phone,
+                          email: settings.email || '',
                           invoiceNotes: settings.invoiceNotes || '',
                           showTermsHeading: false,
                           hideTermsBox: false,
@@ -1198,6 +1205,36 @@ export const InvoiceModal: React.FC<Props> = ({
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-right font-mono"
                   />
                 </div>
+              </div>
+
+              {/* Email (البريد الإلكتروني الظاهر في الفاتورة) */}
+              <div className="text-xs">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-semibold text-slate-700">
+                    البريد الإلكتروني (الإيميل في الفاتورة):
+                  </label>
+                  {headerFormData.email && (
+                    <button
+                      type="button"
+                      onClick={() => setHeaderFormData({ ...headerFormData, email: '' })}
+                      className="text-[11px] text-red-600 hover:underline cursor-pointer font-semibold"
+                      title="مسح الإيميل لإلغاء ظهوره في الفاتورة"
+                    >
+                      مسح الإيميل نهائياً
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="email"
+                  dir="ltr"
+                  value={headerFormData.email}
+                  onChange={(e) => setHeaderFormData({ ...headerFormData, email: e.target.value })}
+                  placeholder="example@gmail.com (أو اتركه فارغاً لإلغاء ظهوره في الفاتورة)"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-right font-mono focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-[10px] text-slate-500 mt-1 block">
+                  💡 اكتب إيميلك هنا ليظهر في ترويسة الفاتورة، أو اتركه فارغاً أو اضغط "مسح الإيميل" لإلغاء ظهوره تماماً.
+                </span>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">

@@ -723,6 +723,40 @@ export const WorkshopSettingsDropdown: React.FC<Props> = ({
                 </div>
               </div>
 
+              {/* Email (البريد الإلكتروني / الإيميل في الفاتورة) */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-slate-700 flex items-center gap-1">
+                    <span>البريد الإلكتروني (الإيميل)</span>
+                    <span className="text-[10px] text-slate-400 font-normal">(اختياري - يظهر في الفاتورة)</span>
+                  </label>
+                  {formData.email && (
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, email: '' })}
+                      className="text-[10px] text-red-600 hover:underline cursor-pointer"
+                      title="مسح الإيميل حتى لا يظهر في الفاتورة"
+                    >
+                      مسح الإيميل
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <Mail className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-2.5" />
+                  <input
+                    type="email"
+                    dir="ltr"
+                    value={formData.email || ''}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="example@gmail.com (أو اتركه فارغاً لإلغائه)"
+                    className="w-full text-xs pr-8 pl-3 py-2 border border-slate-200 rounded-lg text-right font-mono focus:ring-2 focus:ring-blue-500 bg-slate-50/50"
+                  />
+                </div>
+                <span className="text-[10px] text-slate-500 mt-1 block">
+                  💡 اكتب بريدك الإلكتروني هنا، أو اتركه فارغاً تماماً لإلغاء ظهوره في الفاتورة.
+                </span>
+              </div>
+
               {/* Address */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">عنوان الورشة والموقع</label>

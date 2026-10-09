@@ -309,7 +309,7 @@ export const DEFAULT_SETTINGS: WorkshopSettings = {
   ownerName: 'المعلم أبو أحمد',
   phone: '0599000000',
   address: 'المنطقة الصناعية - الشارع الرئيسي',
-  email: 'workshop@example.com',
+  email: '',
   logoUrl: '',
   appUrl: '',
   currency: 'د.أ',
