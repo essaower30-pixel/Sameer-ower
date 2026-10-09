@@ -20,16 +20,26 @@ import {
   Receipt,
   Plus,
   Trash2,
+  FileDown,
+  Send,
+  Loader2,
+  Check,
+  Image as ImageIcon,
+  Download,
+  Edit2,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import { SignaturePadModal } from './SignaturePadModal';
 import { WhatsAppShareModal } from './WhatsAppShareModal';
 import { CustomerPaymentModal } from './CustomerPaymentModal';
+import { exportElementToPdf, exportElementToImage, shareFileDirectly } from '../utils/pdfExport';
 
 interface Props {
   order: CustomerOrder | null;
   settings: WorkshopSettings;
   currency: string;
   onUpdateOrder?: (order: CustomerOrder) => void;
+  onSaveSettings?: (settings: WorkshopSettings) => void;
   onClose: () => void;
 }
 
@@ -38,6 +48,7 @@ export const InvoiceModal: React.FC<Props> = ({
   settings,
   currency: defaultCurrency,
   onUpdateOrder,
+  onSaveSettings,
   onClose,
 }) => {
   if (!initialOrder) return null;
@@ -47,9 +58,162 @@ export const InvoiceModal: React.FC<Props> = ({
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [signingTarget, setSigningTarget] = useState<'customer' | 'workshop' | null>(null);
   const [isCollectingPayment, setIsCollectingPayment] = useState(false);
+  const [isEditHeaderModalOpen, setIsEditHeaderModalOpen] = useState(false);
+  const [headerFormData, setHeaderFormData] = useState({
+    workshopName: settings.workshopName,
+    ownerName: settings.ownerName || '',
+    managementTitle: settings.managementTitle ?? 'إدارة:',
+    phone: settings.phone,
+    invoiceNotes: settings.invoiceNotes || '',
+    showTermsHeading: !!settings.showTermsHeading,
+    hideTermsBox: !!settings.hideTermsBox,
+  });
+
+  // Sync header form data whenever settings change
+  React.useEffect(() => {
+    setHeaderFormData({
+      workshopName: settings.workshopName,
+      ownerName: settings.ownerName || '',
+      managementTitle: settings.managementTitle ?? 'إدارة:',
+      phone: settings.phone,
+      invoiceNotes: settings.invoiceNotes || '',
+      showTermsHeading: !!settings.showTermsHeading,
+      hideTermsBox: !!settings.hideTermsBox,
+    });
+  }, [settings]);
+
+  const handleSaveHeaderSettings = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const updatedSettings: WorkshopSettings = {
+      ...settings,
+      workshopName: headerFormData.workshopName.trim() || settings.workshopName,
+      ownerName: headerFormData.ownerName.trim(),
+      managementTitle: headerFormData.managementTitle,
+      phone: headerFormData.phone.trim(),
+      invoiceNotes: headerFormData.invoiceNotes,
+      showTermsHeading: headerFormData.showTermsHeading,
+      hideTermsBox: headerFormData.hideTermsBox,
+    };
+    if (onSaveSettings) {
+      onSaveSettings(updatedSettings);
+    }
+    try {
+      localStorage.setItem('workshop_settings', JSON.stringify(updatedSettings));
+    } catch (err) {
+      console.error(err);
+    }
+    setIsEditHeaderModalOpen(false);
+  };
 
   const currency = currentOrder.currency || defaultCurrency;
   const messageText = generateCustomerInvoiceText(currentOrder, settings.workshopName, currency);
+
+  const invoicePaperRef = React.useRef<HTMLDivElement>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [pdfSuccessMessage, setPdfSuccessMessage] = useState<string | null>(null);
+
+  const handleDownloadPdf = async () => {
+    if (!invoicePaperRef.current) return;
+    setIsGeneratingPdf(true);
+    try {
+      const cleanCustomer = (currentOrder.customerName || 'الزبون').replace(/[\/\\?%*:|"<>]/g, '-').trim();
+      const fileName = `فاتورة_${cleanCustomer}_${currentOrder.orderNumber}.pdf`;
+      await exportElementToPdf(invoicePaperRef.current, fileName);
+      setPdfSuccessMessage(`تم تحميل وحفظ ملف الفاتورة PDF (${fileName}) بنجاح!`);
+      setTimeout(() => setPdfSuccessMessage(null), 4000);
+    } catch (err) {
+      console.error(err);
+      alert('حدث خطأ أثناء تصدير ملف PDF، يرجى المحاولة مرة أخرى أو استخدام خيار الطباعة.');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  const handleSharePdf = async () => {
+    if (!invoicePaperRef.current) return;
+    setIsGeneratingPdf(true);
+    try {
+      const cleanCustomer = (currentOrder.customerName || 'الزبون').replace(/[\/\\?%*:|"<>]/g, '-').trim();
+      const fileName = `فاتورة_${cleanCustomer}_${currentOrder.orderNumber}.pdf`;
+      const file = await exportElementToPdf(invoicePaperRef.current, fileName);
+      if (file) {
+        const shared = await shareFileDirectly(
+          file,
+          `فاتورة ${currentOrder.orderNumber} - ${cleanCustomer}`,
+          `السلام عليكم ${currentOrder.customerName}، مرفق فاتورة رقم ${currentOrder.orderNumber} من ورشة ${settings.workshopName}`
+        );
+        if (shared) {
+          setPdfSuccessMessage(`تمت مشاركة ملف الفاتورة PDF بنجاح!`);
+        } else {
+          setPdfSuccessMessage(`تم حفظ ملف الفاتورة (${fileName}) في التنزيلات. جاري فتح واتساب لإرسالها للزبون...`);
+          setTimeout(() => {
+            openWhatsApp({
+              phone: currentOrder.customerPhone,
+              text: `السلام عليكم ${currentOrder.customerName}، مرفق فاتورة رقم ${currentOrder.orderNumber} الصادرة من ورشة ${settings.workshopName}. (تم حفظ ملف PDF في جهازك لإرفاقه الآن).`,
+            });
+          }, 1200);
+        }
+        setTimeout(() => setPdfSuccessMessage(null), 6000);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('حدث خطأ أثناء تصدير ملف PDF، يرجى المحاولة مرة أخرى أو استخدام خيار الطباعة.');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  const handleShareImage = async () => {
+    if (!invoicePaperRef.current) return;
+    setIsGeneratingImage(true);
+    try {
+      const cleanCustomer = (currentOrder.customerName || 'الزبون').replace(/[\/\\?%*:|"<>]/g, '-').trim();
+      const fileName = `فاتورة_${cleanCustomer}_${currentOrder.orderNumber}.png`;
+      const file = await exportElementToImage(invoicePaperRef.current, fileName);
+      if (file) {
+        const shared = await shareFileDirectly(
+          file,
+          `فاتورة ${currentOrder.orderNumber} - ${cleanCustomer}`,
+          `السلام عليكم ${currentOrder.customerName}، مرفق صورة فاتورة رقم ${currentOrder.orderNumber} من ${settings.workshopName}`
+        );
+        if (shared) {
+          setPdfSuccessMessage(`تمت مشاركة صورة الفاتورة بنجاح!`);
+        } else {
+          setPdfSuccessMessage(`تم حفظ صورة الفاتورة (${fileName}) في جهازك. جاري فتح واتساب لإرسالها للزبون...`);
+          setTimeout(() => {
+            openWhatsApp({
+              phone: currentOrder.customerPhone,
+              text: `السلام عليكم ${currentOrder.customerName}، مرفق صورة الفاتورة رقم ${currentOrder.orderNumber} من ورشة ${settings.workshopName}. (تم حفظ الصورة في جهازك لتظهر فوراً في المحادثة مع التواقيع).`,
+            });
+          }, 1200);
+        }
+        setTimeout(() => setPdfSuccessMessage(null), 6000);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('حدث خطأ أثناء تصدير صورة الفاتورة، يرجى المحاولة مرة أخرى.');
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  const handleDownloadImage = async () => {
+    if (!invoicePaperRef.current) return;
+    setIsGeneratingImage(true);
+    try {
+      const cleanCustomer = (currentOrder.customerName || 'الزبون').replace(/[\/\\?%*:|"<>]/g, '-').trim();
+      const fileName = `فاتورة_${cleanCustomer}_${currentOrder.orderNumber}.png`;
+      await exportElementToImage(invoicePaperRef.current, fileName);
+      setPdfSuccessMessage(`تم تحميل وحفظ صورة الفاتورة (${fileName}) بنجاح!`);
+      setTimeout(() => setPdfSuccessMessage(null), 4000);
+    } catch (err) {
+      console.error(err);
+      alert('حدث خطأ أثناء تحميل صورة الفاتورة.');
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
 
   const handlePrint = () => {
     window.print();
@@ -131,7 +295,7 @@ export const InvoiceModal: React.FC<Props> = ({
       <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-6">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[96vh] flex flex-col overflow-hidden border border-slate-200">
           {/* Actions Bar (hidden when printing) */}
-          <div className="flex flex-wrap items-center justify-between px-4 sm:px-5 py-3 bg-slate-900 text-white gap-2 no-print">
+          <div className="flex flex-wrap items-center justify-between px-3 sm:px-5 py-2.5 bg-slate-900 text-white gap-2 no-print border-b border-slate-800">
             <div className="flex items-center gap-2">
               <span className="font-bold text-sm">معاينة فاتورة البيع</span>
               <span className="text-xs text-slate-400 font-mono">({currentOrder.orderNumber})</span>
@@ -147,54 +311,95 @@ export const InvoiceModal: React.FC<Props> = ({
                   title="تسجيل تحصيل دفعة أو تسديد من الزبون"
                 >
                   <DollarSign className="w-3.5 h-3.5" />
-                  <span className="hidden xs:inline">تحصيل دفعة</span>
-                  <span className="xs:hidden">تحصيل</span>
+                  <span>تحصيل دفعة</span>
                 </button>
               )}
 
-              {/* WhatsApp Standard Quick Button */}
+              {/* Direct PDF Send Button */}
+              <button
+                type="button"
+                disabled={isGeneratingPdf || isGeneratingImage}
+                onClick={handleSharePdf}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer disabled:opacity-50"
+                title="إرسال الفاتورة كملف PDF رسمي مع التوقيع عبر واتساب أو التطبيقات"
+              >
+                {isGeneratingPdf ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <FileDown className="w-3.5 h-3.5" />
+                )}
+                <span>إرسال PDF 📄</span>
+              </button>
+
+              {/* Direct Image Send Button */}
+              <button
+                type="button"
+                disabled={isGeneratingPdf || isGeneratingImage}
+                onClick={handleShareImage}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer disabled:opacity-50"
+                title="إرسال الفاتورة كصورة مباشرة في محادثة واتساب لتظهر فورا مع التوقيع"
+              >
+                {isGeneratingImage ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <ImageIcon className="w-3.5 h-3.5" />
+                )}
+                <span>إرسال كصورة 🖼️</span>
+              </button>
+
+              {/* Quick Standard WhatsApp */}
               <button
                 type="button"
                 onClick={handleQuickStandardWA}
-                className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer"
-                title="إرسال عبر تطبيق واتساب العادي"
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                title="إرسال نص الفاتورة عبر واتساب"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
-                <span className="hidden xs:inline">واتساب عادي</span>
-                <span className="xs:hidden">واتساب</span>
+                <span className="hidden sm:inline">واتساب نصي</span>
               </button>
 
-              {/* WhatsApp Business Quick Button */}
-              <button
-                type="button"
-                onClick={handleQuickBusinessWA}
-                className="flex items-center gap-1 px-2.5 py-1.5 bg-teal-700 hover:bg-teal-600 active:bg-teal-800 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer"
-                title="إرسال عبر تطبيق واتساب للأعمال (WhatsApp Business)"
-              >
-                <Briefcase className="w-3.5 h-3.5" />
-                <span className="hidden xs:inline">واتساب أعمال 💼</span>
-                <span className="xs:hidden">أعمال</span>
-              </button>
-
-              {/* Share Options Dialog Button */}
+              {/* All Share Options Dialog Button */}
               <button
                 type="button"
                 onClick={() => setIsShareModalOpen(true)}
                 className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold transition-colors border border-slate-700 cursor-pointer"
-                title="خيارات المشاركة والنسخ المتقدمة"
+                title="خيارات المشاركة والتحميل"
               >
                 <Share2 className="w-3.5 h-3.5 text-slate-300" />
-                <span className="hidden sm:inline">خيارات المشاركة</span>
+                <span className="hidden sm:inline">خيارات أخرى</span>
+              </button>
+
+              {/* Quick Settings & Header Customization Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setHeaderFormData({
+                    workshopName: settings.workshopName,
+                    ownerName: settings.ownerName || '',
+                    managementTitle: settings.managementTitle ?? 'إدارة:',
+                    phone: settings.phone,
+                    invoiceNotes: settings.invoiceNotes || '',
+                    showTermsHeading: !!settings.showTermsHeading,
+                    hideTermsBox: !!settings.hideTermsBox,
+                  });
+                  setIsEditHeaderModalOpen(true);
+                }}
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold transition-colors border border-slate-700 cursor-pointer"
+                title="تعديل اسم الإدارة أو إلغاء الشروط والأحكام"
+              >
+                <Edit2 className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">تعديل الإدارة والشروط</span>
               </button>
 
               {/* Print Button */}
               <button
                 type="button"
                 onClick={handlePrint}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                title="طباعة ورقية مباشرة"
               >
                 <Printer className="w-3.5 h-3.5" />
-                <span>طباعة / PDF</span>
+                <span>طباعة</span>
               </button>
 
               {/* Close */}
@@ -208,9 +413,26 @@ export const InvoiceModal: React.FC<Props> = ({
             </div>
           </div>
 
+          {/* Feedback Toast Banner */}
+          {pdfSuccessMessage && (
+            <div className="bg-emerald-600 text-white px-4 py-2 text-xs font-bold flex items-center justify-between no-print animate-in fade-in duration-200">
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 shrink-0" />
+                <span>{pdfSuccessMessage}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPdfSuccessMessage(null)}
+                className="text-white/80 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           {/* Printable Paper Document */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-10 bg-white text-slate-900 font-['Cairo',sans-serif]">
-            <div className="max-w-3xl mx-auto space-y-6">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-8 bg-slate-100 text-slate-900 font-['Cairo',sans-serif] invoice-paper-container">
+            <div ref={invoicePaperRef} className="max-w-3xl mx-auto space-y-6 bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-slate-200 print:shadow-none print:border-none print:p-0">
               {/* Header / Brand */}
               <div className="flex items-start justify-between border-b-2 border-slate-900 pb-5 gap-4">
                 <div className="space-y-1">
@@ -230,9 +452,37 @@ export const InvoiceModal: React.FC<Props> = ({
                       {settings.workshopName}
                     </h1>
                   </div>
-                  <p className="text-xs text-slate-600 font-medium">
-                    {settings.ownerName ? `إدارة: ${settings.ownerName} | ` : ''}هاتف: {settings.phone}
-                    {settings.email ? ` | إيميل: ${settings.email}` : ''}
+                  <p className="text-xs text-slate-600 font-medium flex items-center flex-wrap gap-1">
+                    {settings.ownerName ? (
+                      <span>
+                        {settings.managementTitle !== undefined && settings.managementTitle !== null
+                          ? (settings.managementTitle ? `${settings.managementTitle} ` : '')
+                          : 'إدارة: '}
+                        <strong className="text-slate-800">{settings.ownerName}</strong> | 
+                      </span>
+                    ) : null}
+                    <span>هاتف: {settings.phone}</span>
+                    {settings.email ? <span> | إيميل: {settings.email}</span> : ''}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHeaderFormData({
+                          workshopName: settings.workshopName,
+                          ownerName: settings.ownerName || '',
+                          managementTitle: settings.managementTitle ?? 'إدارة:',
+                          phone: settings.phone,
+                          invoiceNotes: settings.invoiceNotes || '',
+                          showTermsHeading: !!settings.showTermsHeading,
+                          hideTermsBox: !!settings.hideTermsBox,
+                        });
+                        setIsEditHeaderModalOpen(true);
+                      }}
+                      className="no-print inline-flex items-center gap-1 text-[10px] text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-1.5 py-0.5 rounded cursor-pointer mr-1 font-medium transition-colors"
+                      title="تغيير اسم الإدارة الظاهر في الفاتورة"
+                    >
+                      <Edit2 className="w-2.5 h-2.5 text-blue-600" />
+                      <span>تعديل الإدارة</span>
+                    </button>
                   </p>
                   <p className="text-xs text-slate-500">
                     {settings.address} • تخصص ألمنيوم، أبواب أكرديون، ستائر زيبرا، أباجورات
@@ -381,15 +631,71 @@ export const InvoiceModal: React.FC<Props> = ({
 
               {/* Financial Totals Calculation Box */}
               <div className="flex flex-col sm:flex-row items-start justify-between gap-4 pt-2">
-                <div className="flex-1 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
-                  <div className="font-bold text-slate-800 mb-1">الشروط والأحكام:</div>
-                  <p className="leading-relaxed">{settings.invoiceNotes}</p>
-                  {currentOrder.notes && (
-                    <p className="text-amber-800 pt-1 border-t border-slate-200 font-medium">
-                      ملاحظات فاتورة البيع: {currentOrder.notes}
-                    </p>
-                  )}
-                </div>
+                {/* Notes and Terms Box (Cancels 'الشروط والأحكام' phrase as requested by user) */}
+                {!settings.hideTermsBox && (settings.invoiceNotes || currentOrder.notes || settings.showTermsHeading) ? (
+                  <div className="flex-1 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1 relative">
+                    {/* Only show 'الشروط والأحكام:' if explicitly enabled, otherwise canceled per user request */}
+                    {settings.showTermsHeading ? (
+                      <div className="font-bold text-slate-800 mb-1">الشروط والأحكام:</div>
+                    ) : (
+                      (settings.invoiceNotes || currentOrder.notes) ? (
+                        <div className="font-bold text-slate-700 mb-1 flex items-center justify-between">
+                          <span>ملاحظات الفاتورة:</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setHeaderFormData({
+                                workshopName: settings.workshopName,
+                                ownerName: settings.ownerName || '',
+                                managementTitle: settings.managementTitle ?? 'إدارة:',
+                                phone: settings.phone,
+                                invoiceNotes: settings.invoiceNotes || '',
+                                showTermsHeading: !!settings.showTermsHeading,
+                                hideTermsBox: !!settings.hideTermsBox,
+                              });
+                              setIsEditHeaderModalOpen(true);
+                            }}
+                            className="no-print text-[10px] text-blue-600 hover:underline cursor-pointer"
+                            title="تعديل الملاحظات"
+                          >
+                            تعديل
+                          </button>
+                        </div>
+                      ) : null
+                    )}
+                    {settings.invoiceNotes && (
+                      <p className="leading-relaxed text-slate-700">{settings.invoiceNotes}</p>
+                    )}
+                    {currentOrder.notes && (
+                      <p className="text-amber-800 pt-1 border-t border-slate-200 font-medium">
+                        ملاحظات خاصة بالطلب: {currentOrder.notes}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  /* Space filler / quick notes trigger when terms box is hidden */
+                  <div className="flex-1 text-xs text-slate-400 no-print flex items-center gap-2">
+                    <span className="text-[11px] text-slate-400">(تم إلغاء عبارة الشروط والأحكام من الفاتورة)</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHeaderFormData({
+                          workshopName: settings.workshopName,
+                          ownerName: settings.ownerName || '',
+                          managementTitle: settings.managementTitle ?? 'إدارة:',
+                          phone: settings.phone,
+                          invoiceNotes: settings.invoiceNotes || '',
+                          showTermsHeading: false,
+                          hideTermsBox: false,
+                        });
+                        setIsEditHeaderModalOpen(true);
+                      }}
+                      className="text-[11px] text-blue-600 hover:underline cursor-pointer"
+                    >
+                      + إضافة ملاحظة
+                    </button>
+                  </div>
+                )}
 
                 <div className="w-full sm:w-72 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
                   <div className="flex justify-between text-slate-600">
@@ -568,7 +874,9 @@ export const InvoiceModal: React.FC<Props> = ({
                         <img
                           src={currentOrder.workshopSignature}
                           alt="توقيع الورشة"
-                          className="max-h-20 max-w-full object-contain mx-auto"
+                          className="max-h-20 max-w-full object-contain mx-auto block"
+                          style={{ minHeight: '48px', display: 'block' }}
+                          crossOrigin="anonymous"
                         />
                         <div className="no-print mt-1 flex items-center justify-center gap-1">
                           <button
@@ -625,7 +933,9 @@ export const InvoiceModal: React.FC<Props> = ({
                         <img
                           src={currentOrder.customerSignature}
                           alt="توقيع الزبون"
-                          className="max-h-20 max-w-full object-contain mx-auto"
+                          className="max-h-20 max-w-full object-contain mx-auto block"
+                          style={{ minHeight: '48px', display: 'block' }}
+                          crossOrigin="anonymous"
                         />
                         <div className="no-print mt-1 flex items-center justify-center gap-1">
                           <button
@@ -690,6 +1000,10 @@ export const InvoiceModal: React.FC<Props> = ({
           subtitle={`فاتورة رقم: ${currentOrder.orderNumber} - الزبون: ${currentOrder.customerName}`}
           defaultPhone={currentOrder.customerPhone}
           messageText={messageText}
+          onSharePdf={handleSharePdf}
+          onDownloadPdf={handleDownloadPdf}
+          onShareImage={handleShareImage}
+          onDownloadImage={handleDownloadImage}
           onClose={() => setIsShareModalOpen(false)}
         />
       )}
@@ -744,6 +1058,167 @@ export const InvoiceModal: React.FC<Props> = ({
             setIsCollectingPayment(false);
           }}
         />
+      )}
+
+      {/* Quick Edit Management & Terms Modal */}
+      {isEditHeaderModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 no-print animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden border border-slate-200">
+            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Edit2 className="w-5 h-5 text-amber-400" />
+                <h3 className="font-bold text-sm sm:text-base">تعديل اسم الإدارة والشروط في الفاتورة</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditHeaderModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveHeaderSettings} className="p-4 sm:p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+              {/* Management Name (اسم الإدارة) */}
+              <div className="bg-blue-50/70 p-3 rounded-xl border border-blue-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-blue-950">
+                    اسم المدير / الإدارة (الظاهر كـ "إدارة: ..."):
+                  </label>
+                  {headerFormData.ownerName && (
+                    <button
+                      type="button"
+                      onClick={() => setHeaderFormData({ ...headerFormData, ownerName: '' })}
+                      className="text-[11px] text-red-600 hover:underline font-semibold cursor-pointer"
+                    >
+                      مسح الاسم نهائياً
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="text"
+                  value={headerFormData.ownerName}
+                  onChange={(e) => setHeaderFormData({ ...headerFormData, ownerName: e.target.value })}
+                  placeholder="مثال: المعلم أحمد أو اكتب اسمك (أو اتركه فارغاً لإلغاء ظهور الإدارة)"
+                  className="w-full text-xs sm:text-sm px-3 py-2 border border-blue-300 rounded-lg bg-white font-medium text-slate-900 focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-[11px] text-blue-800">
+                  💡 لتغيير كلمة "أبو سند" أو مسحها تماماً حتى لا تظهر كلمة إدارة في الفاتورة.
+                </p>
+
+                {headerFormData.ownerName && (
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-blue-200/80 text-xs">
+                    <span className="text-slate-700">صفة الإدارة المطبوعة:</span>
+                    <select
+                      value={headerFormData.managementTitle}
+                      onChange={(e) => setHeaderFormData({ ...headerFormData, managementTitle: e.target.value })}
+                      className="text-xs px-2 py-1 border border-blue-300 rounded bg-white text-slate-800 font-medium"
+                    >
+                      <option value="إدارة:">إدارة:</option>
+                      <option value="بإدارة:">بإدارة:</option>
+                      <option value="إشراف:">إشراف:</option>
+                      <option value="المدير:">المدير:</option>
+                      <option value="المعلم:">المعلم:</option>
+                      <option value="">بدون كلمة إدارة (الاسم مباشرة)</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Terms and Conditions Controls (إلغاء عبارة الشروط والأحكام) */}
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2.5">
+                <span className="text-xs font-bold text-slate-800 block">
+                  إعدادات الشروط والملاحظات بالفاتورة:
+                </span>
+
+                <label className="flex items-start gap-2 cursor-pointer text-xs text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={!headerFormData.showTermsHeading}
+                    onChange={(e) => setHeaderFormData({ ...headerFormData, showTermsHeading: !e.target.checked })}
+                    className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div>
+                    <span className="font-bold text-slate-900 block">إلغاء عبارة "الشروط والأحكام" من الفاتورة</span>
+                    <span className="text-[10px] text-slate-500 block">
+                      (مفعل - لن تظهر كلمة الشروط والأحكام وتظهر الملاحظات فقط بشكل بسيط)
+                    </span>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-2 cursor-pointer text-xs text-slate-700 pt-1.5 border-t border-slate-200">
+                  <input
+                    type="checkbox"
+                    checked={headerFormData.hideTermsBox}
+                    onChange={(e) => setHeaderFormData({ ...headerFormData, hideTermsBox: e.target.checked })}
+                    className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div>
+                    <span className="font-bold text-slate-900 block">إخفاء صندوق الملاحظات والشروط بالكامل</span>
+                    <span className="text-[10px] text-slate-500 block">
+                      (إلغاء المربع كاملاً من الفاتورة)
+                    </span>
+                  </div>
+                </label>
+
+                {!headerFormData.hideTermsBox && (
+                  <div className="pt-1">
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      نص ملاحظات الفاتورة:
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={headerFormData.invoiceNotes}
+                      onChange={(e) => setHeaderFormData({ ...headerFormData, invoiceNotes: e.target.value })}
+                      placeholder="أدخل أي ملاحظات ترغب بها، أو امسحها تماماً..."
+                      className="w-full text-xs p-2.5 border border-slate-200 rounded-lg bg-white"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Workshop Name & Phone */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">اسم المحل / الورشة:</label>
+                  <input
+                    type="text"
+                    value={headerFormData.workshopName}
+                    onChange={(e) => setHeaderFormData({ ...headerFormData, workshopName: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">رقم الهاتف:</label>
+                  <input
+                    type="text"
+                    dir="ltr"
+                    value={headerFormData.phone}
+                    onChange={(e) => setHeaderFormData({ ...headerFormData, phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-right font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setIsEditHeaderModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>حفظ وتحديث الفاتورة فوراً</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </>
   );

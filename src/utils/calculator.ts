@@ -65,9 +65,12 @@ export function calculateItemMetrics(params: {
     ? Number(effectiveWidthM.toFixed(2)) // في المطابخ: العرض/الطول هو أمتار الجر (متر جر)
     : Number((effectiveWidthM * effectiveHeightM).toFixed(3)); // في الألمنيوم والستائر: مساحة م² (عرض × ارتفاع)
   
-  // Single piece calculated area or linear meters (respecting minimum threshold)
+  // Single piece calculated area or linear meters (respecting minimum threshold only when dimensions entered)
+  const hasDimensions = isKitchen ? w > 0 : (w > 0 && h > 0);
   const minimumThreshold = Math.max(0, Number(minArea) || 0);
-  const calculatedArea = Number(Math.max(rawArea, minimumThreshold).toFixed(2));
+  const calculatedArea = hasDimensions
+    ? Number(Math.max(rawArea, minimumThreshold).toFixed(2))
+    : 0;
   const totalArea = Number((calculatedArea * qty).toFixed(2));
 
   const addCost = Number(additionalCost) || 0;
@@ -75,8 +78,8 @@ export function calculateItemMetrics(params: {
   const cPerM = Number(costPerMeter) || 0;
   const pPerM = Number(pricePerMeter) || 0;
 
-  const unitCost = (calculatedArea * cPerM) + addCost;
-  const unitPrice = (calculatedArea * pPerM) + addPrice;
+  const unitCost = hasDimensions ? (calculatedArea * cPerM) + addCost : 0;
+  const unitPrice = hasDimensions ? (calculatedArea * pPerM) + addPrice : 0;
 
   const totalCost = Number((unitCost * qty).toFixed(2));
   const totalPrice = Number((unitPrice * qty).toFixed(2));

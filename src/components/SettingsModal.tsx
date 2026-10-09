@@ -211,15 +211,30 @@ export const SettingsModal: React.FC<Props> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                اسم المعلم / المدير المسؤول:
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold text-slate-700">
+                  اسم المعلم / المدير المسؤول (اسم الإدارة في الفاتورة):
+                </label>
+                {formData.ownerName && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, ownerName: '' })}
+                    className="text-[11px] text-red-600 hover:underline cursor-pointer"
+                  >
+                    مسح اسم الإدارة
+                  </button>
+                )}
+              </div>
               <input
                 type="text"
-                value={formData.ownerName}
+                value={formData.ownerName || ''}
                 onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
+                placeholder="مثال: أبو سند أو المعلم أحمد (أو اتركه فارغاً لإلغاء كلمة إدارة)"
                 className="w-full text-xs sm:text-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
               />
+              <span className="text-[11px] text-blue-600 mt-1 block">
+                💡 لتغيير اسم الإدارة (مثل "أبو سند") الظاهر في ترويسة فاتورة البيع والختم، أو مسحه بالكامل.
+              </span>
             </div>
 
             <div>
@@ -344,16 +359,59 @@ export const SettingsModal: React.FC<Props> = ({
               </div>
             </div>
 
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                شروط العقد والضمان في الفاتورة:
+            <div className="sm:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-800">
+                  إعدادات الشروط والملاحظات في الفاتورة:
+                </label>
+              </div>
+
+              {/* Cancel "الشروط والأحكام" */}
+              <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={!formData.showTermsHeading}
+                  onChange={(e) => setFormData({ ...formData, showTermsHeading: !e.target.checked })}
+                  className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <div>
+                  <span className="font-semibold text-slate-900 block">إلغاء عبارة "الشروط والأحكام" من الفاتورة</span>
+                  <span className="text-[11px] text-slate-500 block">
+                    (مفعل - لن يظهر عنوان الشروط والأحكام في الفاتورة وستظهر الملاحظات فقط بشكل أنيق)
+                  </span>
+                </div>
               </label>
-              <textarea
-                rows={2}
-                value={formData.invoiceNotes}
-                onChange={(e) => setFormData({ ...formData, invoiceNotes: e.target.value })}
-                className="w-full text-xs sm:text-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
-              />
+
+              {/* Hide box completely */}
+              <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-700 pt-2 border-t border-slate-200">
+                <input
+                  type="checkbox"
+                  checked={!!formData.hideTermsBox}
+                  onChange={(e) => setFormData({ ...formData, hideTermsBox: e.target.checked })}
+                  className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <div>
+                  <span className="font-semibold text-slate-900 block">إخفاء صندوق الملاحظات والشروط بالكامل من الفاتورة</span>
+                  <span className="text-[11px] text-slate-500 block">
+                    (حذف الصندوق تماماً من أسفل الفاتورة)
+                  </span>
+                </div>
+              </label>
+
+              {!formData.hideTermsBox && (
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    نص ملاحظات الفاتورة (اختياري):
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={formData.invoiceNotes || ''}
+                    onChange={(e) => setFormData({ ...formData, invoiceNotes: e.target.value })}
+                    placeholder="أدخل أي ملاحظات ترغب بظهورها، أو اتركها فارغة تماماً..."
+                    className="w-full text-xs sm:text-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>

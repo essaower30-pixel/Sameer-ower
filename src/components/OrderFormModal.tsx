@@ -94,12 +94,12 @@ export const OrderFormModal: React.FC<Props> = ({
     if (initialItems && initialItems.length > 0) {
       return initialItems;
     }
-    // Default initial item: an aluminum window
+    // Default initial item: an aluminum window (empty dimensions for quick entry)
     const def = settings.defaultCosts.aluminum;
     const metrics = calculateItemMetrics({
       category: 'aluminum',
-      width: 160,
-      height: 140,
+      width: 0,
+      height: 0,
       unit: 'cm',
       quantity: 1,
       minArea: def.minArea,
@@ -111,8 +111,8 @@ export const OrderFormModal: React.FC<Props> = ({
         id: `item-${Date.now()}`,
         category: 'aluminum',
         name: 'شباك ألمنيوم سحاب',
-        width: 160,
-        height: 140,
+        width: 0,
+        height: 0,
         unit: 'cm',
         quantity: 1,
         minArea: def.minArea,
@@ -232,6 +232,32 @@ export const OrderFormModal: React.FC<Props> = ({
     }
   };
 
+  // Track raw dimension inputs (width & height strings) for smooth typing without pre-filled numbers or cursor jumps
+  const [dimensionInputs, setDimensionInputs] = useState<
+    Record<string, { width?: string; height?: string }>
+  >({});
+
+  const handleDimensionChange = (itemId: string, field: 'width' | 'height', rawVal: string) => {
+    // Sanitize: allow numbers and dot, converting commas to dot
+    let sanitized = rawVal.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+    const dotParts = sanitized.split('.');
+    if (dotParts.length > 2) {
+      sanitized = dotParts[0] + '.' + dotParts.slice(1).join('');
+    }
+
+    setDimensionInputs((prev) => ({
+      ...prev,
+      [itemId]: {
+        ...prev[itemId],
+        [field]: sanitized,
+      },
+    }));
+
+    const parsed = parseFloat(sanitized);
+    const num = isNaN(parsed) ? 0 : parsed;
+    updateItem(itemId, { [field]: num });
+  };
+
   // Recalculate an item when inputs change
   const updateItem = (id: string, updates: Partial<OrderItem>) => {
     setItems((prevItems) =>
@@ -286,6 +312,16 @@ export const OrderFormModal: React.FC<Props> = ({
       newHeight = Math.round(item.height * 100);
     }
 
+    if (newWidth > 0 || newHeight > 0) {
+      setDimensionInputs((prev) => ({
+        ...prev,
+        [id]: {
+          width: newWidth > 0 ? String(newWidth) : '',
+          height: newHeight > 0 ? String(newHeight) : '',
+        },
+      }));
+    }
+
     updateItem(id, { unit: newUnit, width: newWidth, height: newHeight });
   };
 
@@ -304,6 +340,16 @@ export const OrderFormModal: React.FC<Props> = ({
         } else {
           newWidth = Math.round(item.width * 100);
           newHeight = Math.round(item.height * 100);
+        }
+
+        if (newWidth > 0 || newHeight > 0) {
+          setDimensionInputs((prev) => ({
+            ...prev,
+            [item.id]: {
+              width: newWidth > 0 ? String(newWidth) : '',
+              height: newHeight > 0 ? String(newHeight) : '',
+            },
+          }));
         }
 
         const metrics = calculateItemMetrics({
@@ -352,13 +398,8 @@ export const OrderFormModal: React.FC<Props> = ({
     };
 
     const preferredUnit = settings.defaultUnit || 'cm';
-    let defaultW = category === 'accordion' ? 100 : category === 'kitchens' ? (preferredUnit === 'm' ? 4.0 : 400) : 160;
-    let defaultH = category === 'accordion' ? 210 : category === 'kitchens' ? (preferredUnit === 'm' ? 2.2 : 220) : 140;
-
-    if (preferredUnit === 'm' && category !== 'kitchens') {
-      defaultW = category === 'accordion' ? 1.0 : 1.6;
-      defaultH = category === 'accordion' ? 2.1 : 1.4;
-    }
+    let defaultW = 0;
+    let defaultH = 0;
 
     // Default kitchen initial components
     const defaultKitchenComponents = category === 'kitchens' ? [
@@ -453,6 +494,11 @@ export const OrderFormModal: React.FC<Props> = ({
       return;
     }
     setItems(items.filter((i) => i.id !== itemId));
+    setDimensionInputs((prev) => {
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
   };
 
   // Calculate overall totals
@@ -857,27 +903,41 @@ export const OrderFormModal: React.FC<Props> = ({
                           </label>
                         </div>
                         <input
-                          type="number"
-                          step="any"
-                          value={item.width || ''}
-                          onChange={(e) =>
-                            updateItem(item.id, { width: parseFloat(e.target.value) || 0 })
+                          type="text"
+                          inputMode="decimal"
+                          value={
+                            dimensionInputs[item.id]?.width !== undefined
+                              ? dimensionInputs[item.id]?.width
+                              : item.width > 0
+                              ? String(item.width)
+                              : ''
                           }
-                          className={`w-full px-2 py-1.5 font-bold font-mono border rounded text-center ${
+                          placeholder=""
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) =>
+                            handleDimensionChange(item.id, 'width', e.target.value)
+                          }
+                          className={`w-full px-2 py-1.5 font-bold font-mono border rounded text-center focus:ring-2 focus:ring-blue-500 focus:outline-hidden ${
                             item.category === 'kitchens'
                               ? 'border-orange-400 bg-orange-50/40 text-orange-950 font-black'
-                              : 'border-slate-300 bg-slate-50/50'
+                              : 'border-slate-300 bg-white text-slate-900'
                           }`}
                         />
-                        <span className="text-[10px] text-blue-600 font-mono block mt-0.5 text-center font-medium" dir="ltr">
-                          {item.category === 'kitchens'
-                            ? item.unit === 'cm'
-                              ? `≈ ${(item.width / 100).toFixed(2)} متر جر`
-                              : `${item.width} متر جر`
-                            : item.unit === 'cm'
-                            ? `≈ ${(item.width / 100).toFixed(2)}m`
-                            : `≈ ${Math.round(item.width * 100)}cm`}
-                        </span>
+                        {item.width > 0 ? (
+                          <span className="text-[10px] text-blue-600 font-mono block mt-0.5 text-center font-medium" dir="ltr">
+                            {item.category === 'kitchens'
+                              ? item.unit === 'cm'
+                                ? `≈ ${(item.width / 100).toFixed(2)} متر جر`
+                                : `${item.width} متر جر`
+                              : item.unit === 'cm'
+                              ? `≈ ${(item.width / 100).toFixed(2)}m`
+                              : `≈ ${Math.round(item.width * 100)}cm`}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 block mt-0.5 text-center">
+                            أدخل العرض
+                          </span>
+                        )}
                       </div>
 
                       {/* Height / Cabinet Height */}
@@ -890,19 +950,33 @@ export const OrderFormModal: React.FC<Props> = ({
                           </label>
                         </div>
                         <input
-                          type="number"
-                          step="any"
-                          value={item.height || ''}
-                          onChange={(e) =>
-                            updateItem(item.id, { height: parseFloat(e.target.value) || 0 })
+                          type="text"
+                          inputMode="decimal"
+                          value={
+                            dimensionInputs[item.id]?.height !== undefined
+                              ? dimensionInputs[item.id]?.height
+                              : item.height > 0
+                              ? String(item.height)
+                              : ''
                           }
-                          className="w-full px-2 py-1.5 font-bold font-mono border border-slate-300 rounded bg-slate-50/50 text-center"
+                          placeholder=""
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) =>
+                            handleDimensionChange(item.id, 'height', e.target.value)
+                          }
+                          className="w-full px-2 py-1.5 font-bold font-mono border border-slate-300 rounded bg-white text-slate-900 text-center focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                         />
-                        <span className="text-[10px] text-blue-600 font-mono block mt-0.5 text-center font-medium" dir="ltr">
-                          {item.unit === 'cm'
-                            ? `≈ ${(item.height / 100).toFixed(2)}m`
-                            : `≈ ${Math.round(item.height * 100)}cm`}
-                        </span>
+                        {item.height > 0 ? (
+                          <span className="text-[10px] text-blue-600 font-mono block mt-0.5 text-center font-medium" dir="ltr">
+                            {item.unit === 'cm'
+                              ? `≈ ${(item.height / 100).toFixed(2)}m`
+                              : `≈ ${Math.round(item.height * 100)}cm`}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 block mt-0.5 text-center">
+                            أدخل الارتفاع
+                          </span>
+                        )}
                       </div>
 
                       {/* Quantity */}
@@ -1072,7 +1146,7 @@ export const OrderFormModal: React.FC<Props> = ({
                                     hasAdditions: true,
                                   })
                                 }
-                                placeholder="0"
+                                placeholder=""
                                 className="w-full px-2.5 py-2 bg-white border-2 border-amber-400 rounded-lg font-bold font-mono text-center text-slate-900 focus:outline-hidden focus:border-amber-600 shadow-2xs"
                               />
                             </div>

@@ -538,7 +538,7 @@ export const PurchaseInvoiceModal: React.FC<Props> = ({
                     step="any"
                     value={paidAmount}
                     onChange={(e) => setPaidAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="0"
+                    placeholder=""
                     className="w-full px-2 py-1 border border-emerald-300 rounded font-mono font-bold text-emerald-900 text-sm focus:ring-1 focus:ring-emerald-500"
                   />
                   <span className="text-xs font-bold text-slate-500">{currency}</span>

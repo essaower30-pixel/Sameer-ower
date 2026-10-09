@@ -707,6 +707,7 @@ export default function App() {
           settings={settings}
           currency={settings.currency}
           onUpdateOrder={handleUpdateOrderDirect}
+          onSaveSettings={(newSettings) => setSettings(newSettings)}
           onClose={() => setViewingInvoiceOrder(null)}
         />
       )}

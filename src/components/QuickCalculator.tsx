@@ -33,23 +33,50 @@ export const QuickCalculator: React.FC<Props> = ({
   const [category, setCategory] = useState<ProductCategory>('aluminum');
   const [itemName, setItemName] = useState('شباك ألمنيوم');
   const [unit, setUnit] = useState<MeasurementUnit>(settings.defaultUnit || 'cm');
-  const [width, setWidth] = useState<number>(settings.defaultUnit === 'm' ? 1.6 : 160);
-  const [height, setHeight] = useState<number>(settings.defaultUnit === 'm' ? 1.4 : 140);
+  const [widthInput, setWidthInput] = useState<string>('');
+  const [heightInput, setHeightInput] = useState<string>('');
+  const width = parseFloat(widthInput) || 0;
+  const height = parseFloat(heightInput) || 0;
   const [quantity, setQuantity] = useState<number>(1);
   const [boxAllowanceCm, setBoxAllowanceCm] = useState<number>(25);
   const [hasBoxAllowance, setHasBoxAllowance] = useState<boolean>(true);
 
+  const handleWidthInputChange = (val: string) => {
+    let sanitized = val.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+    const parts = sanitized.split('.');
+    if (parts.length > 2) sanitized = parts[0] + '.' + parts.slice(1).join('');
+    setWidthInput(sanitized);
+  };
+
+  const handleHeightInputChange = (val: string) => {
+    let sanitized = val.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+    const parts = sanitized.split('.');
+    if (parts.length > 2) sanitized = parts[0] + '.' + parts.slice(1).join('');
+    setHeightInput(sanitized);
+  };
+
   // Smart unit switch with value conversion
   const handleUnitChange = (newUnit: MeasurementUnit) => {
     if (newUnit === unit) return;
-    if (newUnit === 'm') {
-      // from cm to m
-      setWidth((prev) => Number((prev / 100).toFixed(3)));
-      setHeight((prev) => Number((prev / 100).toFixed(3)));
-    } else {
-      // from m to cm
-      setWidth((prev) => Math.round(prev * 100));
-      setHeight((prev) => Math.round(prev * 100));
+    if (widthInput) {
+      const curW = parseFloat(widthInput) || 0;
+      if (curW > 0) {
+        setWidthInput(
+          newUnit === 'm'
+            ? String(Number((curW / 100).toFixed(3)))
+            : String(Math.round(curW * 100))
+        );
+      }
+    }
+    if (heightInput) {
+      const curH = parseFloat(heightInput) || 0;
+      if (curH > 0) {
+        setHeightInput(
+          newUnit === 'm'
+            ? String(Number((curH / 100).toFixed(3)))
+            : String(Math.round(curH * 100))
+        );
+      }
     }
     setUnit(newUnit);
   };
@@ -77,34 +104,34 @@ export const QuickCalculator: React.FC<Props> = ({
 
     if (cat === 'aluminum') {
       setItemName('شباك ألمنيوم');
-      setWidth(160);
-      setHeight(140);
+      setWidthInput('');
+      setHeightInput('');
       setAdditionalPrice(0);
       setAdditionalNote('');
     } else if (cat === 'accordion') {
       setItemName('باب أكرديون');
-      setWidth(100);
-      setHeight(210);
+      setWidthInput('');
+      setHeightInput('');
       setAdditionalPrice(0);
       setAdditionalNote('');
     } else if (cat === 'zebra') {
       setItemName('ستائر زيبرا');
-      setWidth(150);
-      setHeight(180);
+      setWidthInput('');
+      setHeightInput('');
       setAdditionalPrice(0);
       setAdditionalNote('');
     } else if (cat === 'shutters') {
       setItemName('أباجور شتر ألمنيوم');
-      setWidth(160);
-      setHeight(140);
+      setWidthInput('');
+      setHeightInput('');
       setHasBoxAllowance(true);
       setBoxAllowanceCm(30);
       setAdditionalPrice(60);
       setAdditionalNote('محرك كهربائي');
     } else if (cat === 'kitchens') {
       setItemName('مطبخ تفصيل مودرن');
-      setWidth(400);
-      setHeight(220);
+      setWidthInput('');
+      setHeightInput('');
       setAdditionalPrice(0);
       setAdditionalNote('خشب هاي غلوس ورخام كوارتز');
     }
@@ -130,6 +157,11 @@ export const QuickCalculator: React.FC<Props> = ({
 
   // Add current item to session basket
   const handleAddToBasket = () => {
+    if (width <= 0 || height <= 0) {
+      alert('يرجى إدخال مقاسات العرض والارتفاع أولاً.');
+      return;
+    }
+
     const newItem: OrderItem = {
       id: `calc-${Date.now()}`,
       category,
@@ -162,6 +194,11 @@ export const QuickCalculator: React.FC<Props> = ({
   };
 
   const handleCreateOrderFromSingle = () => {
+    if (width <= 0 || height <= 0) {
+      alert('يرجى إدخال مقاسات العرض والارتفاع أولاً.');
+      return;
+    }
+
     const singleItem: OrderItem = {
       id: `item-${Date.now()}`,
       category,
@@ -294,13 +331,13 @@ export const QuickCalculator: React.FC<Props> = ({
                   العرض ({unit === 'cm' ? 'سم' : 'م'}):
                 </label>
                 <input
-                  type="number"
-                  step="any"
-                  min="1"
-                  value={width || ''}
-                  onChange={(e) => setWidth(parseFloat(e.target.value) || 0)}
-                  className="w-full text-base font-bold font-mono px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-hidden text-center"
-                  placeholder={unit === 'cm' ? '160' : '1.6'}
+                  type="text"
+                  inputMode="decimal"
+                  value={widthInput}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => handleWidthInputChange(e.target.value)}
+                  className="w-full text-base font-bold font-mono px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-hidden text-center bg-white text-slate-900"
+                  placeholder=""
                 />
               </div>
 
@@ -309,13 +346,13 @@ export const QuickCalculator: React.FC<Props> = ({
                   الارتفاع ({unit === 'cm' ? 'سم' : 'م'}):
                 </label>
                 <input
-                  type="number"
-                  step="any"
-                  min="1"
-                  value={height || ''}
-                  onChange={(e) => setHeight(parseFloat(e.target.value) || 0)}
-                  className="w-full text-base font-bold font-mono px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-hidden text-center"
-                  placeholder={unit === 'cm' ? '140' : '1.4'}
+                  type="text"
+                  inputMode="decimal"
+                  value={heightInput}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => handleHeightInputChange(e.target.value)}
+                  className="w-full text-base font-bold font-mono px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-hidden text-center bg-white text-slate-900"
+                  placeholder=""
                 />
               </div>
 
@@ -429,7 +466,7 @@ export const QuickCalculator: React.FC<Props> = ({
                       min="0"
                       value={additionalPrice || ''}
                       onChange={(e) => setAdditionalPrice(parseFloat(e.target.value) || 0)}
-                      placeholder="0"
+                      placeholder=""
                       className="w-full text-xs font-mono font-bold px-3 py-2 border border-slate-300 rounded-lg bg-white text-center"
                     />
                     <span className="absolute left-2.5 top-2.5 text-xs text-slate-400">{currency}</span>
@@ -464,19 +501,23 @@ export const QuickCalculator: React.FC<Props> = ({
               <div className="flex items-center justify-between text-slate-600">
                 <span>المقاس المدخل:</span>
                 <span className="font-mono font-bold text-slate-800">
-                  {width} × {height} {unit === 'cm' ? 'سم' : 'م'}
+                  {width > 0 && height > 0
+                    ? `${width} × ${height} ${unit === 'cm' ? 'سم' : 'م'}`
+                    : 'بانتظار إدخال المقاسات'}
                 </span>
               </div>
 
               {/* Converted reading */}
-              <div className="flex items-center justify-between text-blue-700 bg-blue-50/60 px-2 py-1 rounded">
-                <span>المعادل بالوحدة الأخرى:</span>
-                <span className="font-mono font-semibold" dir="ltr">
-                  {unit === 'cm'
-                    ? `${(width / 100).toFixed(2)}m × ${(height / 100).toFixed(2)}m`
-                    : `${Math.round(width * 100)}cm × ${Math.round(height * 100)}cm`}
-                </span>
-              </div>
+              {width > 0 && height > 0 && (
+                <div className="flex items-center justify-between text-blue-700 bg-blue-50/60 px-2 py-1 rounded">
+                  <span>المعادل بالوحدة الأخرى:</span>
+                  <span className="font-mono font-semibold" dir="ltr">
+                    {unit === 'cm'
+                      ? `${(width / 100).toFixed(2)}m × ${(height / 100).toFixed(2)}m`
+                      : `${Math.round(width * 100)}cm × ${Math.round(height * 100)}cm`}
+                  </span>
+                </div>
+              )}
 
               {category === 'shutters' && hasBoxAllowance && (
                 <div className="flex items-center justify-between text-purple-700">

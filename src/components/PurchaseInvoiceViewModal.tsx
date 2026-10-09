@@ -426,7 +426,9 @@ export const PurchaseInvoiceViewModal: React.FC<Props> = ({
                       <img
                         src={currentInvoice.receiverSignature}
                         alt="توقيع المستلم"
-                        className="max-h-16 max-w-full object-contain mx-auto"
+                        className="max-h-16 max-w-full object-contain mx-auto block"
+                        style={{ minHeight: '40px', display: 'block' }}
+                        crossOrigin="anonymous"
                       />
                       <div className="no-print mt-1 flex items-center justify-center gap-1">
                         <button
@@ -472,7 +474,9 @@ export const PurchaseInvoiceViewModal: React.FC<Props> = ({
                       <img
                         src={currentInvoice.supplierSignature}
                         alt="توقيع المورد"
-                        className="max-h-16 max-w-full object-contain mx-auto"
+                        className="max-h-16 max-w-full object-contain mx-auto block"
+                        style={{ minHeight: '40px', display: 'block' }}
+                        crossOrigin="anonymous"
                       />
                       <div className="no-print mt-1 flex items-center justify-center gap-1">
                         <button

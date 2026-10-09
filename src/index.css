@@ -15,9 +15,11 @@ body {
 @layer utilities {
   /* Print styling for quotes and invoices */
   @media print {
-    body {
+    body, html {
       background-color: #ffffff !important;
       color: #000000 !important;
+      overflow: visible !important;
+      height: auto !important;
     }
     .no-print {
       display: none !important;
@@ -32,6 +34,27 @@ body {
     .print-shadow-none {
       box-shadow: none !important;
       border: 1px solid #e2e8f0 !important;
+    }
+    /* Ensure modal containers expand fully to paper dimensions without scroll clipping */
+    .fixed {
+      position: static !important;
+    }
+    .max-h-\[92vh\] {
+      max-height: none !important;
+    }
+    .overflow-hidden {
+      overflow: visible !important;
+    }
+    .overflow-y-auto {
+      overflow: visible !important;
+      height: auto !important;
+      max-height: none !important;
+    }
+    /* Force high-fidelity image and signature printing */
+    img {
+      print-color-adjust: exact !important;
+      -webkit-print-color-adjust: exact !important;
+      max-width: 100% !important;
     }
   }
 }

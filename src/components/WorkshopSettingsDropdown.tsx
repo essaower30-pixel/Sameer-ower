@@ -585,6 +585,111 @@ export const WorkshopSettingsDropdown: React.FC<Props> = ({
                 </div>
               </div>
 
+              {/* Management / Owner Name (اسم الإدارة في الفاتورة) */}
+              <div className="bg-blue-50/60 p-2.5 rounded-xl border border-blue-100 space-y-2">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-blue-950 flex items-center gap-1">
+                      <span>اسم المدير المسؤول / الإدارة</span>
+                      <span className="text-[10px] text-blue-600 font-normal">(يظهر في الفاتورة)</span>
+                    </label>
+                    {formData.ownerName && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, ownerName: '' })}
+                        className="text-[10px] text-red-600 hover:underline cursor-pointer"
+                        title="إلغاء اسم الإدارة من الفاتورة"
+                      >
+                        إلغاء / مسح
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={formData.ownerName || ''}
+                    onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
+                    placeholder="مثال: أبو سند أو المعلم أحمد (أو اتركه فارغاً لإلغاء كلمة إدارة)"
+                    className="w-full text-xs px-3 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white font-medium text-slate-800"
+                  />
+                  <p className="text-[10px] text-blue-700 mt-1">
+                    💡 هنا يمكنك تغيير اسم الإدارة (مثلاً تغيير "أبو سند" لأي اسم آخر)، أو مسحه بالكامل إذا كنت لا تريد ظهور عبارة "إدارة: ..." في الفاتورة.
+                  </p>
+                </div>
+
+                {formData.ownerName && (
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-blue-100 text-[11px]">
+                    <span className="text-slate-600">صفة الإدارة في الفاتورة:</span>
+                    <select
+                      value={formData.managementTitle ?? 'إدارة:'}
+                      onChange={(e) => setFormData({ ...formData, managementTitle: e.target.value })}
+                      className="text-xs px-2 py-1 border border-blue-200 rounded bg-white font-medium text-slate-800"
+                    >
+                      <option value="إدارة:">إدارة:</option>
+                      <option value="بإدارة:">بإدارة:</option>
+                      <option value="إشراف:">إشراف:</option>
+                      <option value="المدير:">المدير:</option>
+                      <option value="المعلم:">المعلم:</option>
+                      <option value="">بدون صفة (الاسم مباشرة)</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Terms and Conditions Controls (إلغاء عبارة الشروط والأحكام من الفاتورة) */}
+              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800">إعدادات الشروط والملاحظات بالفاتورة:</span>
+                </div>
+
+                {/* Cancel "الشروط والأحكام" phrase checkbox */}
+                <label className="flex items-start gap-2 cursor-pointer text-xs text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={!formData.showTermsHeading}
+                    onChange={(e) => setFormData({ ...formData, showTermsHeading: !e.target.checked })}
+                    className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div>
+                    <span className="font-semibold text-slate-900 block">إلغاء عبارة "الشروط والأحكام" من الفاتورة</span>
+                    <span className="text-[10px] text-slate-500 block">
+                      (مفعل - لن تظهر كلمة الشروط والأحكام في الفاتورة، وتظهر الملاحظات فقط بشكل نظيف)
+                    </span>
+                  </div>
+                </label>
+
+                {/* Hide notes box completely */}
+                <label className="flex items-start gap-2 cursor-pointer text-xs text-slate-700 pt-1 border-t border-slate-200">
+                  <input
+                    type="checkbox"
+                    checked={!!formData.hideTermsBox}
+                    onChange={(e) => setFormData({ ...formData, hideTermsBox: e.target.checked })}
+                    className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div>
+                    <span className="font-semibold text-slate-900 block">إخفاء صندوق الملاحظات والشروط بالكامل</span>
+                    <span className="text-[10px] text-slate-500 block">
+                      (إلغاء الصندوق تماماً من أسفل الفاتورة لطباعة مساحة أوسع)
+                    </span>
+                  </div>
+                </label>
+
+                {/* Custom Notes */}
+                {!formData.hideTermsBox && (
+                  <div className="pt-1">
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                      نص ملاحظات الفاتورة (اختياري):
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={formData.invoiceNotes || ''}
+                      onChange={(e) => setFormData({ ...formData, invoiceNotes: e.target.value })}
+                      placeholder="أدخل أي ملاحظات إضافية ترغب بها، أو اتركها فارغة تماماً..."
+                      className="w-full text-xs p-2 border border-slate-200 rounded-lg bg-white"
+                    />
+                  </div>
+                )}
+              </div>
+
               {/* Phone & Address */}
               <div className="grid grid-cols-2 gap-2">
                 <div>

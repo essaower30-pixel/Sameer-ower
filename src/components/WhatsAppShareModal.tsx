@@ -8,6 +8,10 @@ import {
   Briefcase,
   MessageSquare,
   ExternalLink,
+  FileDown,
+  FileText,
+  Image as ImageIcon,
+  Download,
 } from 'lucide-react';
 import { openWhatsApp, shareViaNativeSheet, copyToClipboard } from '../utils/shareUtils';
 
@@ -18,6 +22,10 @@ interface Props {
   defaultPhone?: string;
   messageText: string;
   onClose: () => void;
+  onDownloadPdf?: () => void;
+  onSharePdf?: () => void;
+  onShareImage?: () => void;
+  onDownloadImage?: () => void;
 }
 
 export const WhatsAppShareModal: React.FC<Props> = ({
@@ -27,6 +35,10 @@ export const WhatsAppShareModal: React.FC<Props> = ({
   defaultPhone = '',
   messageText,
   onClose,
+  onDownloadPdf,
+  onSharePdf,
+  onShareImage,
+  onDownloadImage,
 }) => {
   const [phone, setPhone] = useState(defaultPhone);
   const [copied, setCopied] = useState(false);
@@ -138,6 +150,102 @@ export const WhatsAppShareModal: React.FC<Props> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* PDF Document Sharing (Direct file to WhatsApp/Contacts) */}
+              {onSharePdf && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSharePdf();
+                    setShareSuccess('جاري إرسال الفاتورة كملف PDF...');
+                  }}
+                  className="flex items-center gap-3 p-3 bg-indigo-50 hover:bg-indigo-100/90 active:bg-indigo-200 border-2 border-indigo-300/80 rounded-xl text-right transition-all group cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                    <FileDown className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold text-indigo-950 flex items-center gap-1">
+                      <span>إرسال ملف PDF 📄</span>
+                    </div>
+                    <div className="text-[10px] text-indigo-700 truncate">
+                      مستند PDF رسمي مع التوقيع
+                    </div>
+                  </div>
+                </button>
+              )}
+
+              {/* Invoice Image Sharing (Direct image to WhatsApp chat) */}
+              {onShareImage && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onShareImage();
+                    setShareSuccess('جاري إرسال الفاتورة كصورة...');
+                  }}
+                  className="flex items-center gap-3 p-3 bg-purple-50 hover:bg-purple-100/90 active:bg-purple-200 border-2 border-purple-300/80 rounded-xl text-right transition-all group cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                    <ImageIcon className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold text-purple-950 flex items-center gap-1">
+                      <span>إرسال الفاتورة كصورة 🖼️</span>
+                    </div>
+                    <div className="text-[10px] text-purple-700 truncate">
+                      تظهر مباشرة بمحادثة واتساب
+                    </div>
+                  </div>
+                </button>
+              )}
+
+              {/* PDF Download */}
+              {onDownloadPdf && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDownloadPdf();
+                    setShareSuccess('تم بدء تنزيل ملف PDF...');
+                  }}
+                  className="flex items-center gap-3 p-3 bg-rose-50 hover:bg-rose-100/90 active:bg-rose-200 border-2 border-rose-300/80 rounded-xl text-right transition-all group cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold text-rose-950 flex items-center gap-1">
+                      <span>تحميل ملف PDF</span>
+                    </div>
+                    <div className="text-[10px] text-rose-700 truncate">
+                      حفظ مستند PDF في جهازك
+                    </div>
+                  </div>
+                </button>
+              )}
+
+              {/* Image Download */}
+              {onDownloadImage && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDownloadImage();
+                    setShareSuccess('تم بدء تنزيل صورة الفاتورة...');
+                  }}
+                  className="flex items-center gap-3 p-3 bg-fuchsia-50 hover:bg-fuchsia-100/90 active:bg-fuchsia-200 border-2 border-fuchsia-300/80 rounded-xl text-right transition-all group cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-fuchsia-600 text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                    <Download className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold text-fuchsia-950 flex items-center gap-1">
+                      <span>حفظ كصورة 🖼️</span>
+                    </div>
+                    <div className="text-[10px] text-fuchsia-700 truncate">
+                      حفظ في المعرض أو التنزيلات
+                    </div>
+                  </div>
+                </button>
+              )}
+
               {/* Standard WhatsApp */}
               <button
                 type="button"

@@ -638,7 +638,7 @@ export const KitchenItemBuilder: React.FC<Props> = ({
                   onChange={(e) =>
                     setCustomCost(e.target.value === '' ? '' : parseFloat(e.target.value) || 0)
                   }
-                  placeholder="0"
+                  placeholder=""
                   className="w-full px-2 py-1.5 border border-slate-300 rounded text-center font-mono text-xs"
                 />
               </div>
@@ -656,7 +656,7 @@ export const KitchenItemBuilder: React.FC<Props> = ({
                   onChange={(e) =>
                     setCustomPrice(e.target.value === '' ? '' : parseFloat(e.target.value) || 0)
                   }
-                  placeholder="0"
+                  placeholder=""
                   className="w-full px-2 py-1.5 border-2 border-orange-400 rounded text-center font-mono font-bold text-xs bg-orange-50/50"
                 />
               </div>

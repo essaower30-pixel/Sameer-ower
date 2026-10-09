@@ -129,6 +129,9 @@ export interface WorkshopSettings {
   usdToSypRate?: number; // سعر صرف الدولار مقابل الليرة السورية
   defaultUnit: MeasurementUnit; // 'cm' | 'm'
   invoiceNotes: string;
+  showTermsHeading?: boolean; // إظهار أو إلغاء عبارة "الشروط والأحكام" (افتراضياً: false ملغية)
+  hideTermsBox?: boolean; // إخفاء صندوق الشروط والملاحظات بالكامل من الفاتورة
+  managementTitle?: string; // صفة الإدارة (افتراضياً: 'إدارة:' أو تركها فارغة)
   defaultCosts: Record<ProductCategory, { costPerMeter: number; pricePerMeter: number; minArea: number }>;
 }
 
@@ -313,6 +316,9 @@ export const DEFAULT_SETTINGS: WorkshopSettings = {
   usdToSypRate: 14500,
   defaultUnit: 'cm',
   invoiceNotes: 'يشمل السعر التوريد والتركيب مع ضمان لمدة 5 سنوات على الألمنيوم وسنتين على المحركات والإكسسوارات.',
+  showTermsHeading: false, // إلغاء عبارة الشروط والأحكام افتراضياً
+  hideTermsBox: false,
+  managementTitle: 'إدارة:',
   defaultCosts: {
     aluminum: { costPerMeter: 45, pricePerMeter: 75, minArea: 1.0 },
     accordion: { costPerMeter: 25, pricePerMeter: 45, minArea: 1.8 },
