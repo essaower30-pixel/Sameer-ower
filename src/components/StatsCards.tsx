@@ -31,13 +31,13 @@ export const StatsCards: React.FC<Props> = ({ orders, currency, onNavigateToFina
               <CircleDollarSign className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight font-mono">
+          <div className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight font-mono">
             {hasMultipleCurrencies ? (
               <div className="space-y-0.5">
                 {distinctCurrencies.map((c) => {
                   const s = orders.filter((o) => (o.currency || currency) === c).reduce((sum, o) => sum + (o.finalSellingPrice || 0), 0);
                   return (
-                    <div key={c} className="text-base sm:text-lg font-black text-slate-900">
+                    <div key={c} className="text-base sm:text-lg font-black text-slate-950">
                       {formatCurrency(s, c)}
                     </div>
                   );
@@ -47,7 +47,7 @@ export const StatsCards: React.FC<Props> = ({ orders, currency, onNavigateToFina
               formatCurrency(totalSales, currency)
             )}
           </div>
-          <div className="mt-1 flex items-center text-xs text-slate-500 gap-1.5">
+          <div className="mt-1 flex items-center text-xs text-slate-500 gap-1.5 font-medium">
             <span>إجمالي {orders.length} فاتورة بيع مسجلة</span>
           </div>
         </div>
@@ -60,13 +60,13 @@ export const StatsCards: React.FC<Props> = ({ orders, currency, onNavigateToFina
               <CheckCircle2 className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold text-emerald-600 tracking-tight font-mono">
+          <div className="text-xl sm:text-2xl font-black text-emerald-700 tracking-tight font-mono">
             {hasMultipleCurrencies ? (
               <div className="space-y-0.5">
                 {distinctCurrencies.map((c) => {
                   const dep = orders.filter((o) => (o.currency || currency) === c).reduce((sum, o) => sum + (o.deposit || 0), 0);
                   return (
-                    <div key={c} className="text-base sm:text-lg font-black text-emerald-600">
+                    <div key={c} className="text-base sm:text-lg font-black text-emerald-700">
                       {formatCurrency(dep, c)}
                     </div>
                   );
@@ -76,7 +76,7 @@ export const StatsCards: React.FC<Props> = ({ orders, currency, onNavigateToFina
               formatCurrency(totalCollected, currency)
             )}
           </div>
-          <div className="mt-1 flex items-center text-xs text-emerald-700 font-medium gap-1">
+          <div className="mt-1 flex items-center text-xs text-emerald-800 font-bold gap-1">
             <span>تم قبضها كدفعات أولى وعربونات</span>
           </div>
         </div>
@@ -85,17 +85,17 @@ export const StatsCards: React.FC<Props> = ({ orders, currency, onNavigateToFina
         <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs hover:shadow-xs transition-shadow">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-slate-500">مبالغ متبقية للتحصيل</span>
-            <div className="p-2 bg-amber-50 rounded-lg text-amber-600">
+            <div className="p-2 bg-rose-50 rounded-lg text-rose-600">
               <Wallet className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold text-amber-600 tracking-tight font-mono">
+          <div className="text-xl sm:text-2xl font-black text-rose-700 tracking-tight font-mono">
             {hasMultipleCurrencies ? (
               <div className="space-y-0.5">
                 {distinctCurrencies.map((c) => {
                   const rem = orders.filter((o) => (o.currency || currency) === c).reduce((sum, o) => sum + (o.remainingBalance || 0), 0);
                   return (
-                    <div key={c} className="text-base sm:text-lg font-black text-amber-600">
+                    <div key={c} className="text-base sm:text-lg font-black text-rose-700">
                       {formatCurrency(rem, c)}
                     </div>
                   );

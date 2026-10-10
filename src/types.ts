@@ -132,8 +132,16 @@ export interface WorkshopSettings {
   showTermsHeading?: boolean; // إظهار أو إلغاء عبارة "الشروط والأحكام" (افتراضياً: false ملغية)
   hideTermsBox?: boolean; // إخفاء صندوق الشروط والملاحظات بالكامل من الفاتورة
   managementTitle?: string; // صفة الإدارة (افتراضياً: 'إدارة:' أو تركها فارغة)
+  fontFamily?: 'Cairo' | 'Tajawal' | 'IBM Plex Sans Arabic' | 'Almarai'; // نوع الخط العربي المعتمد
   defaultCosts: Record<ProductCategory, { costPerMeter: number; pricePerMeter: number; minArea: number }>;
 }
+
+export const SUPPORTED_FONTS = [
+  { id: 'Cairo', name: 'خط كايرو (Cairo) - عريض وواضح واحترافي (الموصى به)' },
+  { id: 'Tajawal', name: 'خط تجوال (Tajawal) - خط عصري ناعم وفخم' },
+  { id: 'IBM Plex Sans Arabic', name: 'خط آي بي إم (IBM Plex) - هندسي رسمي فائق الدقة' },
+  { id: 'Almarai', name: 'خط المراعي (Almarai) - خط عربي عريض ومريح' },
+] as const;
 
 export const SUPPORTED_CURRENCIES = [
   { code: '$', name: 'دولار أمريكي ($)' },
@@ -319,6 +327,7 @@ export const DEFAULT_SETTINGS: WorkshopSettings = {
   showTermsHeading: false, // إلغاء عبارة الشروط والأحكام افتراضياً
   hideTermsBox: false,
   managementTitle: 'إدارة:',
+  fontFamily: 'Cairo',
   defaultCosts: {
     aluminum: { costPerMeter: 45, pricePerMeter: 75, minArea: 1.0 },
     accordion: { costPerMeter: 25, pricePerMeter: 45, minArea: 1.8 },

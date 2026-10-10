@@ -217,13 +217,13 @@ export const PurchaseInvoiceViewModal: React.FC<Props> = ({
             {/* Supplier & Info Box */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
               <div className="space-y-1.5">
-                <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold">
-                  <Building className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-1.5 text-slate-500 text-[11px] font-bold">
+                  <Building className="w-3.5 h-3.5 text-amber-600" />
                   <span>بيانات المورد والتاجر</span>
                 </div>
-                <p className="font-bold text-slate-900 text-sm">{currentInvoice.supplierName}</p>
+                <p className="font-black text-slate-950 text-base">{currentInvoice.supplierName}</p>
                 {currentInvoice.supplierPhone && (
-                  <p className="text-slate-600 flex items-center gap-1 font-mono" dir="ltr">
+                  <p className="text-slate-700 flex items-center gap-1 font-mono font-bold" dir="ltr">
                     <Phone className="w-3 h-3 text-slate-400" />
                     {currentInvoice.supplierPhone}
                   </p>
@@ -304,33 +304,39 @@ export const PurchaseInvoiceViewModal: React.FC<Props> = ({
 
             {/* Totals Section */}
             <div className="flex justify-end pt-2">
-              <div className="w-full sm:w-80 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
-                <div className="flex justify-between py-1 text-slate-600">
-                  <span>إجمالي قيمة المشتريات:</span>
-                  <span className="font-mono font-bold text-slate-900">
+              <div className="w-full sm:w-80 bg-slate-50 p-4 rounded-xl border border-slate-300 space-y-2 text-xs">
+                <div className="flex justify-between py-1 text-slate-700">
+                  <span className="font-bold">إجمالي قيمة المشتريات:</span>
+                  <span className="font-mono font-black text-slate-950 text-sm">
                     {formatCurrency(currentInvoice.totalAmount, currency)}
                   </span>
                 </div>
-                <div className="flex justify-between py-1 text-emerald-700 font-semibold border-t border-slate-200">
+                <div className="flex justify-between py-1 text-emerald-800 font-bold border-t border-slate-200">
                   <span>
                     {getSupplierPayments(currentInvoice).length > 1
                       ? `إجمالي المسدد (${getSupplierPayments(currentInvoice).length} دفعات):`
                       : 'المبلغ المدفوع كاش:'}
                   </span>
-                  <span className="font-mono">
+                  <span className="font-mono font-black text-emerald-700 text-sm">
                     {formatCurrency(currentInvoice.paidAmount, currency)}
                   </span>
                 </div>
-                <div className="flex justify-between py-1 font-bold border-t border-slate-200">
-                  <span className={currentInvoice.remainingAmount > 0 ? 'text-rose-700' : 'text-slate-700'}>
-                    الرصيد المتبقي للمورد:
+                <div className={`flex justify-between items-center p-2.5 rounded-xl border ${
+                  currentInvoice.remainingAmount > 0
+                    ? 'bg-rose-50 border-rose-300 text-rose-950'
+                    : 'bg-emerald-50 border-emerald-300 text-emerald-950'
+                }`}>
+                  <span className="font-black">
+                    {currentInvoice.remainingAmount > 0 ? 'الرصيد المتبقي للمورد:' : 'حالة الفاتورة:'}
                   </span>
                   <span
-                    className={`font-mono text-base font-black ${
-                      currentInvoice.remainingAmount > 0 ? 'text-rose-600' : 'text-emerald-700'
+                    className={`font-mono text-base sm:text-lg font-black ${
+                      currentInvoice.remainingAmount > 0 ? 'text-rose-700' : 'text-emerald-700'
                     }`}
                   >
-                    {formatCurrency(currentInvoice.remainingAmount, currency)}
+                    {currentInvoice.remainingAmount > 0
+                      ? formatCurrency(currentInvoice.remainingAmount, currency)
+                      : 'مسدد بالكامل ✅'}
                   </span>
                 </div>
               </div>

@@ -46,40 +46,41 @@ export async function exportElementToPdf(
     let canvasHeight = 1448;
 
     try {
-      const canvas = await html2canvas(element, {
-        scale: 2.2, // High resolution (crisp text & signatures)
-        useCORS: true,
-        allowTaint: false,
-        logging: false,
+      // Primary: html-to-image supports modern CSS variables, oklch colors, and SVG/canvas signatures natively
+      imgData = await htmlToImagePng(element, {
+        pixelRatio: 2.2,
         backgroundColor: '#ffffff',
-        windowWidth: 1024,
-        imageTimeout: 15000,
-        onclone: (_clonedDoc, clonedEl) => {
-          const clonedImgs = clonedEl.querySelectorAll('img');
-          clonedImgs.forEach((img) => {
-            img.style.visibility = 'visible';
-            img.style.display = 'block';
-          });
-        },
+        filter: (node) => !(node as HTMLElement)?.classList?.contains('no-print'),
       });
 
-      imgData = canvas.toDataURL('image/jpeg', 0.98);
-      canvasWidth = canvas.width;
-      canvasHeight = canvas.height;
-    } catch (err) {
-      console.warn('html2canvas-pro fallback to html-to-image for PDF:', err);
-      imgData = await htmlToImagePng(element, {
-        pixelRatio: 2,
-        backgroundColor: '#ffffff',
-      });
       const tmpImg = new Image();
       tmpImg.src = imgData;
       await new Promise<void>((r) => {
         tmpImg.onload = () => r();
         tmpImg.onerror = () => r();
+        setTimeout(r, 600);
       });
       canvasWidth = tmpImg.width || 1024;
       canvasHeight = tmpImg.height || 1448;
+    } catch (primaryErr) {
+      console.warn('html-to-image fallback to html2canvas-pro for PDF:', primaryErr);
+      try {
+        const canvas = await html2canvas(element, {
+          scale: 2.0,
+          useCORS: true,
+          allowTaint: false,
+          logging: false,
+          backgroundColor: '#ffffff',
+          windowWidth: 1024,
+          imageTimeout: 15000,
+        });
+        imgData = canvas.toDataURL('image/jpeg', 0.98);
+        canvasWidth = canvas.width;
+        canvasHeight = canvas.height;
+      } catch (fallbackErr) {
+        console.error('All PDF image capture methods failed:', fallbackErr);
+        throw fallbackErr;
+      }
     }
 
     if (!imgData) throw new Error('Could not render invoice image for PDF');
@@ -148,32 +149,32 @@ export async function exportElementToImage(
     let blob: Blob | null = null;
 
     try {
-      const canvas = await html2canvas(element, {
-        scale: 2.2,
-        useCORS: true,
-        allowTaint: false,
-        logging: false,
-        backgroundColor: '#ffffff',
-        windowWidth: 1024,
-        imageTimeout: 15000,
-        onclone: (_clonedDoc, clonedEl) => {
-          const clonedImgs = clonedEl.querySelectorAll('img');
-          clonedImgs.forEach((img) => {
-            img.style.visibility = 'visible';
-            img.style.display = 'block';
-          });
-        },
-      });
-
-      blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob((b) => resolve(b), 'image/png', 0.98)
-      );
-    } catch (err) {
-      console.warn('html2canvas-pro failed, falling back to html-to-image:', err);
+      // Primary: html-to-image supports modern CSS oklch variables and base64 signatures natively
       blob = await htmlToImageBlob(element, {
-        pixelRatio: 2,
+        pixelRatio: 2.2,
         backgroundColor: '#ffffff',
+        filter: (node) => !(node as HTMLElement)?.classList?.contains('no-print'),
       });
+    } catch (primaryErr) {
+      console.warn('html-to-image failed, trying html2canvas-pro fallback:', primaryErr);
+      try {
+        const canvas = await html2canvas(element, {
+          scale: 2.0,
+          useCORS: true,
+          allowTaint: false,
+          logging: false,
+          backgroundColor: '#ffffff',
+          windowWidth: 1024,
+          imageTimeout: 15000,
+        });
+
+        blob = await new Promise<Blob | null>((resolve) =>
+          canvas.toBlob((b) => resolve(b), 'image/png', 0.98)
+        );
+      } catch (fallbackErr) {
+        console.error('All image export methods failed:', fallbackErr);
+        throw fallbackErr;
+      }
     }
 
     if (!blob) throw new Error('Could not create image blob');

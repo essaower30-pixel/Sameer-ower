@@ -1,15 +1,39 @@
 @import "tailwindcss";
 
-html {
+:root {
+  --app-font: 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+html, body {
+  font-family: var(--app-font), 'Cairo', system-ui, sans-serif;
   overflow-x: hidden;
   overscroll-behavior-x: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {
-  overflow-x: hidden;
-  overscroll-behavior-x: none;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Ensure inputs, buttons, selects, textareas, and tables inherit the Arabic font */
+input, button, select, textarea, table, th, td, optgroup, option {
+  font-family: var(--app-font), 'Cairo', system-ui, sans-serif !important;
+}
+
+/* Sharp, high-contrast bold and black weights for Arabic numerals and titles */
+b, strong, .font-bold {
+  font-weight: 700;
+}
+
+.font-extrabold {
+  font-weight: 800;
+}
+
+.font-black {
+  font-weight: 900;
 }
 
 @layer utilities {

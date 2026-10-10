@@ -25,6 +25,7 @@ import {
   ExternalLink,
   ShieldCheck,
   Smartphone,
+  Type,
 } from 'lucide-react';
 import {
   WorkshopSettings,
@@ -32,6 +33,7 @@ import {
   SupplierPurchaseInvoice,
   WorkshopExpense,
   SUPPORTED_CURRENCIES,
+  SUPPORTED_FONTS,
   DEFAULT_SETTINGS,
 } from '../types';
 import { backupAllToFirestore, loadAllFromFirestore } from '../utils/firestoreSync';
@@ -770,6 +772,33 @@ export const WorkshopSettingsDropdown: React.FC<Props> = ({
                     className="w-full text-xs pr-8 pl-3 py-2 border border-slate-200 rounded-lg bg-slate-50/50"
                   />
                 </div>
+              </div>
+
+              {/* Arabic Font Selection (نوع وتنسيق الخط العربي) */}
+              <div className="bg-amber-50/70 p-2.5 rounded-xl border border-amber-200 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                    <Type className="w-3.5 h-3.5 text-amber-600" />
+                    <span>نوع وتنسيق الخط العربي</span>
+                  </label>
+                  <span className="text-[10px] bg-amber-200/80 text-amber-900 font-extrabold px-1.5 py-0.5 rounded">
+                    عريض في الأماكن الهامة
+                  </span>
+                </div>
+                <select
+                  value={formData.fontFamily || 'Cairo'}
+                  onChange={(e) => setFormData({ ...formData, fontFamily: e.target.value as any })}
+                  className="w-full text-xs px-2.5 py-2 border border-amber-300 rounded-lg font-bold text-slate-900 bg-white shadow-2xs cursor-pointer focus:ring-2 focus:ring-amber-500"
+                >
+                  {SUPPORTED_FONTS.map((font) => (
+                    <option key={font.id} value={font.id}>
+                      {font.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-amber-800 leading-tight">
+                  💡 يتم تطبيق التنسيق العريض تلقائياً على أسماء الزبائن، والأسعار، والصافي، والمتبقي، وعناوين الفواتير.
+                </p>
               </div>
 
               {/* Save Button */}

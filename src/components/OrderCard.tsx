@@ -99,7 +99,7 @@ export const OrderCard: React.FC<Props> = ({
                 </span>
               )}
             </div>
-            <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+            <h3 className="text-base sm:text-lg font-black text-slate-950 tracking-tight">
               {order.customerName || 'زبون بدون اسم'}
             </h3>
           </div>
@@ -189,36 +189,36 @@ export const OrderCard: React.FC<Props> = ({
       <div className="p-4 sm:p-5 border-t border-slate-100 bg-white">
         <div className="grid grid-cols-2 gap-3 mb-3">
           {/* Selling Price */}
-          <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-            <span className="text-[11px] font-medium text-slate-500 block">سعر البيع النهائي</span>
-            <span className="text-base font-bold text-slate-900">
+          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+            <span className="text-[11px] font-bold text-slate-500 block">سعر البيع النهائي</span>
+            <span className="text-base sm:text-lg font-black text-slate-950 font-mono">
               {formatCurrency(order.finalSellingPrice, currency)}
             </span>
           </div>
 
           {/* Remaining Balance */}
           <div
-            className={`p-2.5 rounded-lg border ${
+            className={`p-2.5 rounded-xl border ${
               order.remainingBalance > 0
-                ? 'bg-amber-50/70 border-amber-200 text-amber-900'
-                : 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
+                ? 'bg-rose-50/80 border-rose-200 text-rose-950'
+                : 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
             }`}
           >
-            <span className="text-[11px] font-medium block">
+            <span className="text-[11px] font-bold block">
               {order.remainingBalance > 0 ? 'المتبقي للتحصيل' : 'مدفوع بالكامل'}
             </span>
-            <span className="text-base font-bold">
+            <span className="text-base sm:text-lg font-black font-mono">
               {formatCurrency(order.remainingBalance, currency)}
             </span>
           </div>
         </div>
 
         {/* Payment Summary & Collect Button */}
-        <div className="flex items-center justify-between text-xs text-slate-500 mb-2 px-1 gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center justify-between text-xs text-slate-600 mb-2 px-1 gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap font-semibold">
             <span>
               {payments.length > 1 ? 'المقبوض:' : 'العربون / المقبوض:'}{' '}
-              <strong className="text-emerald-700 font-mono">{formatCurrency(order.deposit || 0, currency)}</strong>
+              <strong className="text-emerald-800 font-mono font-black">{formatCurrency(order.deposit || 0, currency)}</strong>
             </span>
             {payments.length > 1 && (
               <button

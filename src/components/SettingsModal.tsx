@@ -5,6 +5,7 @@ import {
   CustomerOrder,
   DEFAULT_SETTINGS,
   SUPPORTED_CURRENCIES,
+  SUPPORTED_FONTS,
   MeasurementUnit,
 } from '../types';
 import {
@@ -19,6 +20,7 @@ import {
   Ruler,
   Coins,
   Sparkles,
+  Type,
 } from 'lucide-react';
 
 interface Props {
@@ -327,6 +329,33 @@ export const SettingsModal: React.FC<Props> = ({
                   title="اكتب رمز العملة إذا لم يكن في القائمة"
                 />
               </div>
+            </div>
+
+            {/* Arabic Font Selector */}
+            <div className="bg-amber-50/70 p-3 rounded-xl border border-amber-200/80 space-y-1.5">
+              <label className="block text-xs font-bold text-amber-950 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Type className="w-3.5 h-3.5 text-amber-600" />
+                  <span>نوع وتنسيق الخط العربي المعتمد:</span>
+                </span>
+                <span className="text-[10px] bg-amber-200/80 text-amber-900 font-extrabold px-1.5 py-0.5 rounded">
+                  عريض ومقروء
+                </span>
+              </label>
+              <select
+                value={formData.fontFamily || 'Cairo'}
+                onChange={(e) => setFormData({ ...formData, fontFamily: e.target.value as any })}
+                className="w-full text-xs sm:text-sm px-3 py-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 bg-white font-bold text-slate-900"
+              >
+                {SUPPORTED_FONTS.map((font) => (
+                  <option key={font.id} value={font.id}>
+                    {font.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-amber-800 leading-tight">
+                💡 خط <strong>كايرو (Cairo)</strong> هو الخط الأوضح والأفضل للفواتير والمقاسات، مع تمييز العناوين والأسعار بالخط العريض تلقائياً.
+              </p>
             </div>
 
             {/* Exchange Rate Setting: USD to SYP */}

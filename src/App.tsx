@@ -157,6 +157,11 @@ export default function App() {
     } catch (e) {
       console.error('Failed to save settings to localStorage', e);
     }
+
+    // Apply active Arabic font family
+    const font = settings.fontFamily || 'Cairo';
+    document.documentElement.style.setProperty('--app-font', `'${font}', system-ui, sans-serif`);
+    document.body.style.fontFamily = `'${font}', system-ui, sans-serif`;
   }, [settings]);
 
   useEffect(() => {
