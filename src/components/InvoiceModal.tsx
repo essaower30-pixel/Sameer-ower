@@ -127,7 +127,7 @@ export const InvoiceModal: React.FC<Props> = ({
     try {
       const cleanCustomer = (currentOrder.customerName || 'الزبون').replace(/[\/\\?%*:|"<>]/g, '-').trim();
       const fileName = `فاتورة_${cleanCustomer}_${currentOrder.orderNumber}.pdf`;
-      await exportElementToPdf(invoicePaperRef.current, fileName);
+      await exportElementToPdf(invoicePaperRef.current, fileName, { autoDownload: true });
       setPdfSuccessMessage(`تم تحميل وحفظ ملف الفاتورة PDF (${fileName}) بنجاح!`);
       setTimeout(() => setPdfSuccessMessage(null), 4000);
     } catch (err) {
@@ -144,29 +144,41 @@ export const InvoiceModal: React.FC<Props> = ({
     try {
       const cleanCustomer = (currentOrder.customerName || 'الزبون').replace(/[\/\\?%*:|"<>]/g, '-').trim();
       const fileName = `فاتورة_${cleanCustomer}_${currentOrder.orderNumber}.pdf`;
-      const file = await exportElementToPdf(invoicePaperRef.current, fileName);
+      // autoDownload: false -> directly in memory without saving to mobile device storage!
+      const file = await exportElementToPdf(invoicePaperRef.current, fileName, { autoDownload: false });
       if (file) {
         const shared = await shareFileDirectly(
           file,
           `فاتورة ${currentOrder.orderNumber} - ${cleanCustomer}`,
-          `السلام عليكم ${currentOrder.customerName}، مرفق فاتورة رقم ${currentOrder.orderNumber} من ورشة ${settings.workshopName}`
+          `السلام عليكم ${currentOrder.customerName}، مرفق ملف فاتورة رقم ${currentOrder.orderNumber} الصادرة من ${settings.workshopName}`
         );
         if (shared) {
-          setPdfSuccessMessage(`تمت مشاركة ملف الفاتورة PDF بنجاح!`);
+          setPdfSuccessMessage(`تمت مشاركة الفاتورة PDF بنجاح مباشرة (بدون تنزيلها على الذاكرة)!`);
         } else {
-          setPdfSuccessMessage(`تم حفظ ملف الفاتورة (${fileName}) في التنزيلات. جاري فتح واتساب لإرسالها للزبون...`);
+          // If browser/device does not support native file sharing, download as fallback
+          if (typeof navigator === 'undefined' || !navigator.share) {
+            const url = URL.createObjectURL(file);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
+          }
+          setPdfSuccessMessage(`جاري فتح واتساب لإرسال الفاتورة...`);
           setTimeout(() => {
             openWhatsApp({
               phone: currentOrder.customerPhone,
-              text: `السلام عليكم ${currentOrder.customerName}، مرفق فاتورة رقم ${currentOrder.orderNumber} الصادرة من ورشة ${settings.workshopName}. (تم حفظ ملف PDF في جهازك لإرفاقه الآن).`,
+              text: `السلام عليكم ${currentOrder.customerName}، مرفق فاتورة رقم ${currentOrder.orderNumber} الصادرة من ورشة ${settings.workshopName}.`,
             });
           }, 1200);
         }
-        setTimeout(() => setPdfSuccessMessage(null), 6000);
+        setTimeout(() => setPdfSuccessMessage(null), 5000);
       }
     } catch (err) {
       console.error(err);
-      alert('حدث خطأ أثناء تصدير ملف PDF، يرجى المحاولة مرة أخرى أو استخدام خيار الطباعة.');
+      alert('حدث خطأ أثناء تجهيز ملف PDF للمشاركة، يرجى المحاولة مرة أخرى.');
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -178,7 +190,8 @@ export const InvoiceModal: React.FC<Props> = ({
     try {
       const cleanCustomer = (currentOrder.customerName || 'الزبون').replace(/[\/\\?%*:|"<>]/g, '-').trim();
       const fileName = `فاتورة_${cleanCustomer}_${currentOrder.orderNumber}.png`;
-      const file = await exportElementToImage(invoicePaperRef.current, fileName);
+      // autoDownload: false -> directly in memory without saving to device storage!
+      const file = await exportElementToImage(invoicePaperRef.current, fileName, { autoDownload: false });
       if (file) {
         const shared = await shareFileDirectly(
           file,
@@ -186,21 +199,31 @@ export const InvoiceModal: React.FC<Props> = ({
           `السلام عليكم ${currentOrder.customerName}، مرفق صورة فاتورة رقم ${currentOrder.orderNumber} من ${settings.workshopName}`
         );
         if (shared) {
-          setPdfSuccessMessage(`تمت مشاركة صورة الفاتورة بنجاح!`);
+          setPdfSuccessMessage(`تمت مشاركة صورة الفاتورة المنسقة بنجاح مباشرة عبر واتساب!`);
         } else {
-          setPdfSuccessMessage(`تم حفظ صورة الفاتورة (${fileName}) في جهازك. جاري فتح واتساب لإرسالها للزبون...`);
+          if (typeof navigator === 'undefined' || !navigator.share) {
+            const url = URL.createObjectURL(file);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
+          }
+          setPdfSuccessMessage(`جاري فتح واتساب لمراسلة الزبون...`);
           setTimeout(() => {
             openWhatsApp({
               phone: currentOrder.customerPhone,
-              text: `السلام عليكم ${currentOrder.customerName}، مرفق صورة الفاتورة رقم ${currentOrder.orderNumber} من ورشة ${settings.workshopName}. (تم حفظ الصورة في جهازك لتظهر فوراً في المحادثة مع التواقيع).`,
+              text: `السلام عليكم ${currentOrder.customerName}، مرفق صورة الفاتورة رقم ${currentOrder.orderNumber} من ورشة ${settings.workshopName}.`,
             });
           }, 1200);
         }
-        setTimeout(() => setPdfSuccessMessage(null), 6000);
+        setTimeout(() => setPdfSuccessMessage(null), 5000);
       }
     } catch (err) {
       console.error(err);
-      alert('حدث خطأ أثناء تصدير صورة الفاتورة، يرجى المحاولة مرة أخرى.');
+      alert('حدث خطأ أثناء تجهيز صورة الفاتورة، يرجى المحاولة مرة أخرى.');
     } finally {
       setIsGeneratingImage(false);
     }
@@ -212,7 +235,7 @@ export const InvoiceModal: React.FC<Props> = ({
     try {
       const cleanCustomer = (currentOrder.customerName || 'الزبون').replace(/[\/\\?%*:|"<>]/g, '-').trim();
       const fileName = `فاتورة_${cleanCustomer}_${currentOrder.orderNumber}.png`;
-      await exportElementToImage(invoicePaperRef.current, fileName);
+      await exportElementToImage(invoicePaperRef.current, fileName, { autoDownload: true });
       setPdfSuccessMessage(`تم تحميل وحفظ صورة الفاتورة (${fileName}) بنجاح!`);
       setTimeout(() => setPdfSuccessMessage(null), 4000);
     } catch (err) {
