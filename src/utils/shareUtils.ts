@@ -129,6 +129,19 @@ export function openWhatsApp({
   const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
 
+  const triggerDeepLink = (url: string) => {
+    try {
+      const link = document.createElement('a');
+      link.href = url;
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch {
+      window.location.href = url;
+    }
+  };
+
   // When a valid customer phone is available, open the exact chat directly!
   if (cleanedPhone) {
     const waMeUrl = `https://wa.me/${cleanedPhone}?text=${encodedText}`;
@@ -137,7 +150,7 @@ export function openWhatsApp({
     if (type === 'business' && isAndroid) {
       const intentUrl = `intent://send?phone=${cleanedPhone}&text=${encodedText}#Intent;package=com.whatsapp.w4b;scheme=whatsapp;end`;
       try {
-        window.location.href = intentUrl;
+        triggerDeepLink(intentUrl);
         return;
       } catch (e) {
         console.warn('Failed to launch WhatsApp Business via intent', e);
@@ -148,7 +161,7 @@ export function openWhatsApp({
     if (type === 'standard' && isAndroid) {
       const intentUrl = `intent://send?phone=${cleanedPhone}&text=${encodedText}#Intent;package=com.whatsapp;scheme=whatsapp;end`;
       try {
-        window.location.href = intentUrl;
+        triggerDeepLink(intentUrl);
         return;
       } catch (e) {
         console.warn('Failed to launch WhatsApp via intent', e);
@@ -157,7 +170,7 @@ export function openWhatsApp({
 
     // Universal route for Auto, iOS, Desktop and Android:
     if (isMobile) {
-      window.location.href = waMeUrl;
+      triggerDeepLink(waMeUrl);
     } else {
       window.open(waMeUrl, '_blank', 'noopener,noreferrer');
     }

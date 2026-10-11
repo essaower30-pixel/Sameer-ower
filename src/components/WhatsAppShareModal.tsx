@@ -26,6 +26,7 @@ interface Props {
   onDownloadPdf?: () => void;
   onSharePdf?: (phoneOverride?: string, appType?: 'standard' | 'business') => void;
   onShareImage?: (phoneOverride?: string, appType?: 'standard' | 'business') => void;
+  onShareImageFile?: () => void;
   onDownloadImage?: () => void;
 }
 
@@ -39,6 +40,7 @@ export const WhatsAppShareModal: React.FC<Props> = ({
   onDownloadPdf,
   onSharePdf,
   onShareImage,
+  onShareImageFile,
   onDownloadImage,
 }) => {
   const [phone, setPhone] = useState(defaultPhone);
@@ -101,12 +103,12 @@ export const WhatsAppShareModal: React.FC<Props> = ({
             </div>
           )}
 
-          {/* Privacy & No-Storage Notice */}
-          <div className="bg-blue-50/70 border border-blue-200/80 rounded-xl p-2.5 text-[11px] text-blue-900 flex items-start gap-2">
-            <span className="text-blue-600 text-xs shrink-0 mt-0.5">💡</span>
+          {/* Privacy & Direct Delivery Notice */}
+          <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-2.5 text-[11px] text-emerald-950 flex items-start gap-2">
+            <span className="text-emerald-600 text-xs shrink-0 mt-0.5">⚡</span>
             <div>
-              <span className="font-bold">مشاركة مباشرة وآمنة: </span>
-              يتم إرسال الصورة أو ملف الـ PDF مباشرة في الذاكرة دون حفظه على ذاكرة هاتفك. عند الضغط تفتح قائمة المشاركة، اختر منها تطبيق <strong className="text-teal-800">واتساب للأعمال</strong> أو <strong className="text-emerald-800">واتساب</strong> لإرسال الفاتورة فوراً للزبون كصورة أو ملف.
+              <span className="font-bold">إرسال فوري ومباشر للزبون: </span>
+              عند الضغط على <strong className="text-teal-800">واتساب للأعمال</strong> أو <strong className="text-emerald-800">واتساب</strong> أدناه، يتم فتح محادثة الزبون مباشرة برقم هاتفه دون أي بحث، مع نسخ صورة الفاتورة تلقائياً لتلصقها (Paste) فوراً، ودون حفظ أي ملف في ذاكرة هاتفك.
             </div>
           </div>
 
@@ -118,7 +120,7 @@ export const WhatsAppShareModal: React.FC<Props> = ({
                 {phone.trim() && (
                   <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
                     <Zap className="w-3 h-3 text-emerald-600" />
-                    دخول تلقائي مباشر لمحادثته
+                    دخول مباشر لمحادثته
                   </span>
                 )}
               </label>
@@ -136,14 +138,14 @@ export const WhatsAppShareModal: React.FC<Props> = ({
                 مع المفتاح الدولي أو بدونه
               </span>
             </div>
-            <p className="text-[10px] text-slate-500 mt-1">
-              * عند إدخال الرقم يتم الدخول مباشرة إلى محادثة الزبون دون الحاجة للبحث عن اسمه في جهات الاتصال.
+            <p className="text-[10px] text-emerald-700 font-semibold mt-1">
+              * عند إدخال الرقم يتم الدخول مباشرة إلى محادثة الزبون فوراً دون الحاجة للبحث عن اسمه.
             </p>
           </div>
 
-          {/* SECTION 1: Send As Image */}
+          {/* SECTION 1: Send As Image / Direct Chat */}
           {onShareImage && (
-            <div className="bg-purple-50/50 border border-purple-200 rounded-2xl p-3.5 space-y-2.5">
+            <div className="bg-purple-50/60 border border-purple-200 rounded-2xl p-3.5 space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-lg bg-purple-600 text-white flex items-center justify-center shadow-2xs">
@@ -151,23 +153,48 @@ export const WhatsAppShareModal: React.FC<Props> = ({
                   </div>
                   <div>
                     <h4 className="text-xs font-black text-purple-950">إرسال الفاتورة كصورة 🖼️</h4>
-                    <p className="text-[10px] text-purple-700">تظهر مباشرة كصورة داخل محادثة الواتساب</p>
+                    <p className="text-[10px] text-purple-700">دخول مباشر لمحادثة الزبون مع نسخ الصورة للصقها فوراً</p>
                   </div>
                 </div>
                 <span className="text-[10px] bg-purple-200/80 text-purple-800 font-bold px-2 py-0.5 rounded-full">
-                  اختر التطبيق:
+                  دخول مباشر للزبون
                 </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                {/* Standard WhatsApp for Image */}
+                {/* WhatsApp Business for Image (Direct to Customer) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onShareImage(phone, 'business');
+                    setShareSuccess('جاري فتح محادثة الزبون في واتساب للأعمال... نُسخت صورة الفاتورة للصقها فوراً!');
+                  }}
+                  className="flex items-center gap-2.5 p-2.5 bg-white hover:bg-teal-50 active:bg-teal-100 border-2 border-teal-500 rounded-xl text-right transition-all group cursor-pointer shadow-2xs hover:shadow-xs order-1 sm:order-2"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-teal-700 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <Briefcase className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold text-slate-900 flex items-center justify-between">
+                      <span>واتساب للأعمال</span>
+                      <span className="bg-teal-700 text-white text-[9px] px-1 py-0.2 rounded font-mono font-bold">
+                        Business
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-teal-700 font-medium truncate">
+                      دخول مباشر لمحادثة الزبون
+                    </div>
+                  </div>
+                </button>
+
+                {/* Standard WhatsApp for Image (Direct to Customer) */}
                 <button
                   type="button"
                   onClick={() => {
                     onShareImage(phone, 'standard');
-                    setShareSuccess('جاري فتح المشاركة... اختر أيقونة (واتساب) لإرسال الصورة للزبون مباشرة');
+                    setShareSuccess('جاري فتح محادثة الزبون في واتساب... نُسخت صورة الفاتورة للصقها فوراً!');
                   }}
-                  className="flex items-center gap-2.5 p-2.5 bg-white hover:bg-emerald-50 active:bg-emerald-100 border-2 border-emerald-400 rounded-xl text-right transition-all group cursor-pointer shadow-2xs hover:shadow-xs"
+                  className="flex items-center gap-2.5 p-2.5 bg-white hover:bg-emerald-50 active:bg-emerald-100 border-2 border-emerald-400 rounded-xl text-right transition-all group cursor-pointer shadow-2xs hover:shadow-xs order-2 sm:order-1"
                 >
                   <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <MessageSquare className="w-4 h-4" />
@@ -177,35 +204,32 @@ export const WhatsAppShareModal: React.FC<Props> = ({
                       <span>واتساب العادي</span>
                     </div>
                     <div className="text-[10px] text-emerald-700 font-medium truncate">
-                      WhatsApp Messenger
+                      دخول مباشر لمحادثة الزبون
                     </div>
                   </div>
                 </button>
+              </div>
 
-                {/* WhatsApp Business for Image */}
+              {/* Optional: Native Share Sheet for Image file */}
+              {onShareImageFile && (
                 <button
                   type="button"
                   onClick={() => {
-                    onShareImage(phone, 'business');
-                    setShareSuccess('جاري فتح المشاركة... اختر أيقونة (واتساب للأعمال) لإرسال الصورة للزبون مباشرة');
+                    onShareImageFile();
+                    setShareSuccess('جاري فتح قائمة مشاركة النظام لإرسال ملف الصورة...');
                   }}
-                  className="flex items-center gap-2.5 p-2.5 bg-white hover:bg-teal-50 active:bg-teal-100 border-2 border-teal-500 rounded-xl text-right transition-all group cursor-pointer shadow-2xs hover:shadow-xs"
+                  className="w-full mt-1.5 py-2 px-3 bg-white hover:bg-purple-100/60 text-purple-900 border border-purple-200 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-teal-700 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <Briefcase className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold text-slate-900 flex items-center justify-between">
-                      <span>واتساب الأعمال</span>
-                      <span className="bg-teal-700 text-white text-[9px] px-1 py-0.2 rounded font-mono font-bold">
-                        Business
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-teal-700 font-medium truncate">
-                      WhatsApp Business
-                    </div>
-                  </div>
+                  <Share2 className="w-3.5 h-3.5 text-purple-600" />
+                  <span>مشاركة كملف صورة عبر قائمة تطبيقات أندرويد (Share Sheet)</span>
                 </button>
+              )}
+
+              <div className="bg-purple-100/50 rounded-xl p-2 text-[10px] text-purple-900 flex items-start gap-1.5 leading-relaxed">
+                <span className="text-purple-600 font-bold shrink-0 mt-0.5">💡</span>
+                <span>
+                  <strong>طريقة عمل الصورة:</strong> يتم نقلك مباشرة لمحادثة الزبون دون بحث، وتكون صورة الفاتورة منسوخة تلقائياً لتلصقها (Paste / أو الضغط على معاينة الصورة فوق الكيبورد) فتُرسل كصورة حقيقية فوراً.
+                </span>
               </div>
             </div>
           )}
@@ -220,23 +244,48 @@ export const WhatsAppShareModal: React.FC<Props> = ({
                   </div>
                   <div>
                     <h4 className="text-xs font-black text-indigo-950">إرسال الفاتورة كملف PDF 📄</h4>
-                    <p className="text-[10px] text-indigo-700">مستند رسمي عالي الجودة مع التوقيع الإلكتروني</p>
+                    <p className="text-[10px] text-indigo-700">مستند رسمي عالي الجودة مع التوقيع في الذاكرة دون تنزيل</p>
                   </div>
                 </div>
                 <span className="text-[10px] bg-indigo-200/80 text-indigo-800 font-bold px-2 py-0.5 rounded-full">
-                  اختر التطبيق:
+                  مشاركة مستند
                 </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                {/* WhatsApp Business for PDF */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSharePdf(phone, 'business');
+                    setShareSuccess('جاري فتح المشاركة... اختر واتساب للأعمال لإرسال ملف الـ PDF');
+                  }}
+                  className="flex items-center gap-2.5 p-2.5 bg-white hover:bg-teal-50 active:bg-teal-100 border-2 border-teal-500 rounded-xl text-right transition-all group cursor-pointer shadow-2xs hover:shadow-xs order-1 sm:order-2"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-teal-700 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <Briefcase className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold text-slate-900 flex items-center justify-between">
+                      <span>واتساب للأعمال</span>
+                      <span className="bg-teal-700 text-white text-[9px] px-1 py-0.2 rounded font-mono font-bold">
+                        Business
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-teal-700 font-medium truncate">
+                      مشاركة ملف PDF
+                    </div>
+                  </div>
+                </button>
+
                 {/* Standard WhatsApp for PDF */}
                 <button
                   type="button"
                   onClick={() => {
                     onSharePdf(phone, 'standard');
-                    setShareSuccess('جاري فتح المشاركة... اختر أيقونة (واتساب) لإرسال ملف الـ PDF مباشرة');
+                    setShareSuccess('جاري فتح المشاركة... اختر واتساب لإرسال ملف الـ PDF');
                   }}
-                  className="flex items-center gap-2.5 p-2.5 bg-white hover:bg-emerald-50 active:bg-emerald-100 border-2 border-emerald-400 rounded-xl text-right transition-all group cursor-pointer shadow-2xs hover:shadow-xs"
+                  className="flex items-center gap-2.5 p-2.5 bg-white hover:bg-emerald-50 active:bg-emerald-100 border-2 border-emerald-400 rounded-xl text-right transition-all group cursor-pointer shadow-2xs hover:shadow-xs order-2 sm:order-1"
                 >
                   <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <MessageSquare className="w-4 h-4" />
@@ -246,35 +295,17 @@ export const WhatsAppShareModal: React.FC<Props> = ({
                       <span>واتساب العادي</span>
                     </div>
                     <div className="text-[10px] text-emerald-700 font-medium truncate">
-                      إرسال PDF عبر WhatsApp
+                      مشاركة ملف PDF
                     </div>
                   </div>
                 </button>
+              </div>
 
-                {/* WhatsApp Business for PDF */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    onSharePdf(phone, 'business');
-                    setShareSuccess('جاري فتح المشاركة... اختر أيقونة (واتساب للأعمال) لإرسال ملف الـ PDF مباشرة');
-                  }}
-                  className="flex items-center gap-2.5 p-2.5 bg-white hover:bg-teal-50 active:bg-teal-100 border-2 border-teal-500 rounded-xl text-right transition-all group cursor-pointer shadow-2xs hover:shadow-xs"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-teal-700 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <Briefcase className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold text-slate-900 flex items-center justify-between">
-                      <span>واتساب الأعمال</span>
-                      <span className="bg-teal-700 text-white text-[9px] px-1 py-0.2 rounded font-mono font-bold">
-                        Business
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-teal-700 font-medium truncate">
-                      إرسال PDF عبر Business
-                    </div>
-                  </div>
-                </button>
+              <div className="bg-indigo-100/50 rounded-xl p-2 text-[10px] text-indigo-900 flex items-start gap-1.5 leading-relaxed">
+                <span className="text-indigo-600 font-bold shrink-0 mt-0.5">ℹ️</span>
+                <span>
+                  <strong>مشاركة المستندات:</strong> يتم إرسال ملف الـ PDF مباشرة في الذاكرة دون حفظه في هاتفك. وتفتح نافذة المشاركة لتحديد التطبيق والجهة المستلمة وفق معايير أمان أندرويد.
+                </span>
               </div>
             </div>
           )}

@@ -180,7 +180,7 @@ export const InvoiceModal: React.FC<Props> = ({
       // Generate in memory only - NEVER download to device memory!
       const file = await exportElementToPdf(invoicePaperRef.current, fileName, { autoDownload: false });
       if (file) {
-        const appLabel = appType === 'business' ? 'واتساب الأعمال (Business)' : 'واتساب العادي';
+        const appLabel = appType === 'business' ? 'واتساب للأعمال' : 'واتساب';
 
         // Share the PDF file directly via native sharing (without saving to phone storage)
         if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -190,7 +190,7 @@ export const InvoiceModal: React.FC<Props> = ({
             `فاتورة رقم ${currentOrder.orderNumber} - ${settings.workshopName}`
           );
           if (shared) {
-            setPdfSuccessMessage(`تمت مشاركة الفاتورة PDF بنجاح! اختر ${appLabel} لإرسالها.`);
+            setPdfSuccessMessage(`جاري فتح قائمة المشاركة... اختر أيقونة (${appLabel}) لإرسال ملف الـ PDF.`);
           }
         } else {
           // If native file sharing is not supported (e.g. desktop), notify user without forced download
@@ -208,22 +208,61 @@ export const InvoiceModal: React.FC<Props> = ({
     }
   };
 
-  // Share Invoice Image directly to WhatsApp (Standard or Business) as a real Image (NOT text)
+  // Share Invoice Image directly to WhatsApp (Standard or Business) with customer phone & clipboard image
   const executeShareImage = async (
     phoneToUse?: string,
-    appType: 'standard' | 'business' | 'auto' = 'auto'
+    appType: 'standard' | 'business' | 'auto' = 'business'
   ) => {
+    if (!invoicePaperRef.current) return;
+    setIsGeneratingImage(true);
+    try {
+      const targetPhone = phoneToUse !== undefined && phoneToUse.trim() ? phoneToUse.trim() : currentOrder.customerPhone;
+      const cleanCustomer = (currentOrder.customerName || 'الزبون').replace(/[\/\\?%*:|"<>]/g, '-').trim();
+      const fileName = `فاتورة_${cleanCustomer}_${currentOrder.orderNumber}.png`;
+
+      // 1. Generate image in memory only - NEVER download to phone memory!
+      const file = await exportElementToImage(invoicePaperRef.current, fileName, { autoDownload: false });
+      
+      // 2. Copy image to clipboard so user can paste it (Paste) directly inside customer's chat
+      let copied = false;
+      if (file) {
+        copied = await copyImageBlobToClipboard(file);
+      }
+
+      // 3. Open WhatsApp or WhatsApp Business DIRECTLY to customer chat with phone number!
+      openWhatsApp({
+        phone: targetPhone,
+        text: messageText,
+        type: appType,
+        countryCode: settings.defaultCountryCode || '+963',
+      });
+
+      const appLabel = appType === 'business' ? 'واتساب للأعمال' : 'واتساب';
+      if (copied) {
+        setPdfSuccessMessage(`✅ تم فتح محادثة الزبون في ${appLabel} مباشرة، ونُسخت صورة الفاتورة! يمكنك لصقها (Paste) داخل المحادثة لإرسالها كصورة فوراً.`);
+      } else {
+        setPdfSuccessMessage(`✅ تم فتح محادثة الزبون في ${appLabel} مباشرة برقم هاتفه.`);
+      }
+      setTimeout(() => setPdfSuccessMessage(null), 7000);
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        console.error(err);
+        alert('حدث خطأ أثناء تجهيز صورة الفاتورة، يرجى المحاولة مرة أخرى.');
+      }
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  // Optional: Share actual image file via system share sheet
+  const executeShareImageFile = async () => {
     if (!invoicePaperRef.current) return;
     setIsGeneratingImage(true);
     try {
       const cleanCustomer = (currentOrder.customerName || 'الزبون').replace(/[\/\\?%*:|"<>]/g, '-').trim();
       const fileName = `فاتورة_${cleanCustomer}_${currentOrder.orderNumber}.png`;
-      // Generate image in memory only - NEVER download to phone memory!
       const file = await exportElementToImage(invoicePaperRef.current, fileName, { autoDownload: false });
       if (file) {
-        const appLabel = appType === 'business' ? 'واتساب الأعمال (Business)' : 'واتساب العادي';
-
-        // 1. On Mobile: Share the ACTUAL IMAGE FILE directly so it opens as an image in WhatsApp!
         if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
           const shared = await shareFileDirectly(
             file,
@@ -231,30 +270,17 @@ export const InvoiceModal: React.FC<Props> = ({
             `فاتورة رقم ${currentOrder.orderNumber} - ${settings.workshopName}`
           );
           if (shared) {
-            setPdfSuccessMessage(`تمت مشاركة صورة الفاتورة بنجاح! اختر ${appLabel} لإرسال الصورة.`);
+            setPdfSuccessMessage(`تم فتح نافذة المشاركة لإرسال ملف الصورة.`);
           }
         } else {
-          // 2. Desktop Fallback: Copy image to clipboard so user can paste it (Ctrl+V) in WhatsApp Web
           await copyImageBlobToClipboard(file);
-          const targetPhone = phoneToUse !== undefined && phoneToUse.trim() ? phoneToUse.trim() : currentOrder.customerPhone;
-          if (targetPhone && targetPhone.trim()) {
-            openWhatsApp({
-              phone: targetPhone.trim(),
-              text: messageText,
-              type: appType,
-              countryCode: settings.defaultCountryCode || '+963',
-            });
-            setPdfSuccessMessage(`تم نسخ صورة الفاتورة للحافظة! يمكنك لصقها (Paste / Ctrl+V) داخل المحادثة.`);
-          } else {
-            setPdfSuccessMessage(`تم نسخ صورة الفاتورة للحافظة بنجاح!`);
-          }
+          setPdfSuccessMessage(`تم نسخ صورة الفاتورة للحافظة.`);
         }
         setTimeout(() => setPdfSuccessMessage(null), 5000);
       }
     } catch (err: any) {
       if (err?.name !== 'AbortError') {
         console.error(err);
-        alert('حدث خطأ أثناء تجهيز صورة الفاتورة، يرجى المحاولة مرة أخرى.');
       }
     } finally {
       setIsGeneratingImage(false);
@@ -1069,6 +1095,7 @@ export const InvoiceModal: React.FC<Props> = ({
           onShareImage={(phoneOverride, appType) => {
             executeShareImage(phoneOverride, appType);
           }}
+          onShareImageFile={executeShareImageFile}
           onDownloadImage={handleDownloadImage}
           onClose={() => setIsShareModalOpen(false)}
         />
