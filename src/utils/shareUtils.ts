@@ -173,6 +173,32 @@ export function openWhatsApp({
   }
 
   // Fallback if no phone number was found: open WhatsApp text share
+  if (type === 'business' && isAndroid) {
+    const intentUrl = `intent://send?text=${encodedText}#Intent;package=com.whatsapp.w4b;scheme=whatsapp;end`;
+    try {
+      window.location.href = intentUrl;
+      setTimeout(() => {
+        window.location.href = `https://api.whatsapp.com/send?text=${encodedText}`;
+      }, 1200);
+      return;
+    } catch (e) {
+      console.warn('Failed to launch WhatsApp Business via intent', e);
+    }
+  }
+
+  if (type === 'standard' && isAndroid) {
+    const intentUrl = `intent://send?text=${encodedText}#Intent;package=com.whatsapp;scheme=whatsapp;end`;
+    try {
+      window.location.href = intentUrl;
+      setTimeout(() => {
+        window.location.href = `https://api.whatsapp.com/send?text=${encodedText}`;
+      }, 1200);
+      return;
+    } catch (e) {
+      console.warn('Failed to launch WhatsApp via intent', e);
+    }
+  }
+
   const fallbackUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
   if (isMobile) {
     window.location.href = fallbackUrl;
