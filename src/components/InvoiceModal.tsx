@@ -4,6 +4,7 @@ import { formatCurrency, getOrderPayments } from '../utils/calculator';
 import {
   generateCustomerInvoiceText,
   openWhatsApp,
+  copyImageBlobToClipboard,
 } from '../utils/shareUtils';
 import {
   Printer,
@@ -30,6 +31,7 @@ import {
   Settings as SettingsIcon,
   Type,
   Mail,
+  Phone,
 } from 'lucide-react';
 import { SignaturePadModal } from './SignaturePadModal';
 import { WhatsAppShareModal } from './WhatsAppShareModal';
@@ -61,6 +63,8 @@ export const InvoiceModal: React.FC<Props> = ({
   const [signingTarget, setSigningTarget] = useState<'customer' | 'workshop' | null>(null);
   const [isCollectingPayment, setIsCollectingPayment] = useState(false);
   const [isEditHeaderModalOpen, setIsEditHeaderModalOpen] = useState(false);
+  const [isCustomerPhoneModalOpen, setIsCustomerPhoneModalOpen] = useState(false);
+  const [phoneModalInput, setPhoneModalInput] = useState(initialOrder.customerPhone || '');
   const [headerFormData, setHeaderFormData] = useState({
     workshopName: settings.workshopName,
     ownerName: settings.ownerName || '',
@@ -68,6 +72,8 @@ export const InvoiceModal: React.FC<Props> = ({
     phone: settings.phone,
     email: settings.email || '',
     fontFamily: settings.fontFamily || 'Cairo',
+    defaultCountryCode: settings.defaultCountryCode || '+963',
+    preferredWhatsAppType: settings.preferredWhatsAppType || 'business',
     invoiceNotes: settings.invoiceNotes || '',
     showTermsHeading: !!settings.showTermsHeading,
     hideTermsBox: !!settings.hideTermsBox,
@@ -82,11 +88,31 @@ export const InvoiceModal: React.FC<Props> = ({
       phone: settings.phone,
       email: settings.email || '',
       fontFamily: settings.fontFamily || 'Cairo',
+      defaultCountryCode: settings.defaultCountryCode || '+963',
+      preferredWhatsAppType: settings.preferredWhatsAppType || 'business',
       invoiceNotes: settings.invoiceNotes || '',
       showTermsHeading: !!settings.showTermsHeading,
       hideTermsBox: !!settings.hideTermsBox,
     });
   }, [settings]);
+
+  const openHeaderSettingsModal = (overrides?: Partial<typeof headerFormData>) => {
+    setHeaderFormData({
+      workshopName: settings.workshopName,
+      ownerName: settings.ownerName || '',
+      managementTitle: settings.managementTitle ?? 'إدارة:',
+      phone: settings.phone,
+      email: settings.email || '',
+      fontFamily: settings.fontFamily || 'Cairo',
+      defaultCountryCode: settings.defaultCountryCode || '+963',
+      preferredWhatsAppType: settings.preferredWhatsAppType || 'business',
+      invoiceNotes: settings.invoiceNotes || '',
+      showTermsHeading: !!settings.showTermsHeading,
+      hideTermsBox: !!settings.hideTermsBox,
+      ...overrides,
+    });
+    setIsEditHeaderModalOpen(true);
+  };
 
   const handleSaveHeaderSettings = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -98,6 +124,8 @@ export const InvoiceModal: React.FC<Props> = ({
       phone: headerFormData.phone.trim(),
       email: headerFormData.email.trim(),
       fontFamily: headerFormData.fontFamily,
+      defaultCountryCode: headerFormData.defaultCountryCode,
+      preferredWhatsAppType: headerFormData.preferredWhatsAppType,
       invoiceNotes: headerFormData.invoiceNotes,
       showTermsHeading: headerFormData.showTermsHeading,
       hideTermsBox: headerFormData.hideTermsBox,
@@ -171,6 +199,8 @@ export const InvoiceModal: React.FC<Props> = ({
             openWhatsApp({
               phone: currentOrder.customerPhone,
               text: `السلام عليكم ${currentOrder.customerName}، مرفق فاتورة رقم ${currentOrder.orderNumber} الصادرة من ورشة ${settings.workshopName}.`,
+              type: settings.preferredWhatsAppType || 'business',
+              countryCode: settings.defaultCountryCode || '+963',
             });
           }, 1200);
         }
@@ -184,7 +214,8 @@ export const InvoiceModal: React.FC<Props> = ({
     }
   };
 
-  const handleShareImage = async () => {
+  // Direct Execution: Copies invoice image to clipboard and opens WhatsApp directly into customer's chat
+  const executeShareImage = async (phoneToUse?: string) => {
     if (!invoicePaperRef.current) return;
     setIsGeneratingImage(true);
     try {
@@ -193,37 +224,83 @@ export const InvoiceModal: React.FC<Props> = ({
       // autoDownload: false -> directly in memory without saving to device storage!
       const file = await exportElementToImage(invoicePaperRef.current, fileName, { autoDownload: false });
       if (file) {
-        const shared = await shareFileDirectly(
-          file,
-          `فاتورة ${currentOrder.orderNumber} - ${cleanCustomer}`,
-          `السلام عليكم ${currentOrder.customerName}، مرفق صورة فاتورة رقم ${currentOrder.orderNumber} من ${settings.workshopName}`
-        );
-        if (shared) {
-          setPdfSuccessMessage(`تمت مشاركة صورة الفاتورة المنسقة بنجاح مباشرة عبر واتساب!`);
+        // Copy image to clipboard for instant 1-tap pasting inside WhatsApp chat
+        await copyImageBlobToClipboard(file);
+
+        const targetPhone = phoneToUse !== undefined ? phoneToUse : currentOrder.customerPhone;
+        if (targetPhone && targetPhone.trim()) {
+          // DIRECT AUTOMATIC ROUTE: Opens WhatsApp / WhatsApp Business directly into the customer's chat!
+          openWhatsApp({
+            phone: targetPhone.trim(),
+            text: messageText,
+            type: settings.preferredWhatsAppType || 'business',
+            countryCode: settings.defaultCountryCode || '+963',
+          });
+          setPdfSuccessMessage(`🚀 تم الدخول لمحادثة (${currentOrder.customerName}) مباشرة وتجهيز الفاتورة! تم نسخ صورة الفاتورة: اضغط (لصق / Paste) في شريط الرسالة للإرسال فوراً.`);
         } else {
-          if (typeof navigator === 'undefined' || !navigator.share) {
-            const url = URL.createObjectURL(file);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(url), 2000);
+          // If no phone was entered, fallback to native share
+          const shared = await shareFileDirectly(
+            file,
+            `فاتورة ${currentOrder.orderNumber} - ${cleanCustomer}`,
+            `السلام عليكم ${currentOrder.customerName}، مرفق صورة فاتورة رقم ${currentOrder.orderNumber} من ${settings.workshopName}`
+          );
+          if (shared) {
+            setPdfSuccessMessage(`تم فتح قائمة المشاركة لإرسال صورة الفاتورة بنجاح!`);
           }
-          setPdfSuccessMessage(`جاري فتح واتساب لمراسلة الزبون...`);
-          setTimeout(() => {
-            openWhatsApp({
-              phone: currentOrder.customerPhone,
-              text: `السلام عليكم ${currentOrder.customerName}، مرفق صورة الفاتورة رقم ${currentOrder.orderNumber} من ورشة ${settings.workshopName}.`,
-            });
-          }, 1200);
         }
-        setTimeout(() => setPdfSuccessMessage(null), 5000);
+        setTimeout(() => setPdfSuccessMessage(null), 6000);
       }
     } catch (err) {
       console.error(err);
       alert('حدث خطأ أثناء تجهيز صورة الفاتورة، يرجى المحاولة مرة أخرى.');
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  // Automatic Direct Send: Prompts for phone if missing, otherwise goes straight into customer chat!
+  const handleShareImage = async () => {
+    if (!currentOrder.customerPhone || !currentOrder.customerPhone.trim()) {
+      setPhoneModalInput('');
+      setIsCustomerPhoneModalOpen(true);
+      return;
+    }
+    await executeShareImage();
+  };
+
+  const handleConfirmCustomerPhone = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const phoneVal = phoneModalInput.trim();
+    if (!phoneVal) return;
+    const updatedOrder: CustomerOrder = {
+      ...currentOrder,
+      customerPhone: phoneVal,
+    };
+    setCurrentOrder(updatedOrder);
+    if (onUpdateOrder) {
+      onUpdateOrder(updatedOrder);
+    }
+    setIsCustomerPhoneModalOpen(false);
+    executeShareImage(phoneVal);
+  };
+
+  // Optional: Share image file through device's native chooser (Share Sheet)
+  const handleShareImageNative = async () => {
+    if (!invoicePaperRef.current) return;
+    setIsGeneratingImage(true);
+    try {
+      const cleanCustomer = (currentOrder.customerName || 'الزبون').replace(/[\/\\?%*:|"<>]/g, '-').trim();
+      const fileName = `فاتورة_${cleanCustomer}_${currentOrder.orderNumber}.png`;
+      const file = await exportElementToImage(invoicePaperRef.current, fileName, { autoDownload: false });
+      if (file) {
+        await shareFileDirectly(
+          file,
+          `فاتورة ${currentOrder.orderNumber} - ${cleanCustomer}`,
+          `السلام عليكم ${currentOrder.customerName}، مرفق صورة فاتورة رقم ${currentOrder.orderNumber} من ${settings.workshopName}`
+        );
+      }
+    } catch (err) {
+      console.error(err);
     } finally {
       setIsGeneratingImage(false);
     }
@@ -254,7 +331,8 @@ export const InvoiceModal: React.FC<Props> = ({
     openWhatsApp({
       phone: currentOrder.customerPhone,
       text: messageText,
-      type: 'standard',
+      type: settings.preferredWhatsAppType || 'business',
+      countryCode: settings.defaultCountryCode || '+963',
     });
   };
 
@@ -263,6 +341,7 @@ export const InvoiceModal: React.FC<Props> = ({
       phone: currentOrder.customerPhone,
       text: messageText,
       type: 'business',
+      countryCode: settings.defaultCountryCode || '+963',
     });
   };
 
@@ -346,6 +425,22 @@ export const InvoiceModal: React.FC<Props> = ({
                 </button>
               )}
 
+              {/* Direct Automatic Send Button (Image Copied + Direct Customer Chat) */}
+              <button
+                type="button"
+                disabled={isGeneratingPdf || isGeneratingImage}
+                onClick={handleShareImage}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer disabled:opacity-50"
+                title="إرسال الفاتورة تلقائياً لمحادثة الزبون مباشرة دون الحاجة للبحث عن اسمه"
+              >
+                {isGeneratingImage ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Send className="w-3.5 h-3.5" />
+                )}
+                <span>واتساب الزبون (تلقائي) ⚡</span>
+              </button>
+
               {/* Direct PDF Send Button */}
               <button
                 type="button"
@@ -362,31 +457,16 @@ export const InvoiceModal: React.FC<Props> = ({
                 <span>إرسال PDF 📄</span>
               </button>
 
-              {/* Direct Image Send Button */}
+              {/* Image as File via System Share Sheet */}
               <button
                 type="button"
                 disabled={isGeneratingPdf || isGeneratingImage}
-                onClick={handleShareImage}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer disabled:opacity-50"
-                title="إرسال الفاتورة كصورة مباشرة في محادثة واتساب لتظهر فورا مع التوقيع"
+                onClick={handleShareImageNative}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-700 hover:bg-purple-600 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer disabled:opacity-50"
+                title="مشاركة ملف الصورة عبر قائمة التطبيقات (Share Sheet)"
               >
-                {isGeneratingImage ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <ImageIcon className="w-3.5 h-3.5" />
-                )}
-                <span>إرسال كصورة 🖼️</span>
-              </button>
-
-              {/* Quick Standard WhatsApp */}
-              <button
-                type="button"
-                onClick={handleQuickStandardWA}
-                className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer"
-                title="إرسال نص الفاتورة عبر واتساب"
-              >
-                <MessageSquare className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">واتساب نصي</span>
+                <ImageIcon className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">مشاركة الصورة</span>
               </button>
 
               {/* All Share Options Dialog Button */}
@@ -403,20 +483,7 @@ export const InvoiceModal: React.FC<Props> = ({
               {/* Quick Settings & Header Customization Button */}
               <button
                 type="button"
-                onClick={() => {
-                  setHeaderFormData({
-                    workshopName: settings.workshopName,
-                    ownerName: settings.ownerName || '',
-                    managementTitle: settings.managementTitle ?? 'إدارة:',
-                    phone: settings.phone,
-                    email: settings.email || '',
-                    fontFamily: settings.fontFamily || 'Cairo',
-                    invoiceNotes: settings.invoiceNotes || '',
-                    showTermsHeading: !!settings.showTermsHeading,
-                    hideTermsBox: !!settings.hideTermsBox,
-                  });
-                  setIsEditHeaderModalOpen(true);
-                }}
+                onClick={() => openHeaderSettingsModal()}
                 className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold transition-colors border border-slate-700 cursor-pointer"
                 title="تعديل اسم الإدارة، الإيميل، الخط، أو إلغاء الشروط"
               >
@@ -507,20 +574,7 @@ export const InvoiceModal: React.FC<Props> = ({
                     ) : (
                       <button
                         type="button"
-                        onClick={() => {
-                          setHeaderFormData({
-                            workshopName: settings.workshopName,
-                            ownerName: settings.ownerName || '',
-                            managementTitle: settings.managementTitle ?? 'إدارة:',
-                            phone: settings.phone,
-                            email: settings.email || '',
-                            fontFamily: settings.fontFamily || 'Cairo',
-                            invoiceNotes: settings.invoiceNotes || '',
-                            showTermsHeading: !!settings.showTermsHeading,
-                            hideTermsBox: !!settings.hideTermsBox,
-                          });
-                          setIsEditHeaderModalOpen(true);
-                        }}
+                        onClick={() => openHeaderSettingsModal()}
                         className="no-print inline-flex items-center gap-1 text-[10px] text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded cursor-pointer mr-1 font-bold transition-colors"
                         title="إضافة بريد إلكتروني (إيميل) ليظهر في الفاتورة"
                       >
@@ -530,20 +584,7 @@ export const InvoiceModal: React.FC<Props> = ({
                     )}
                     <button
                       type="button"
-                      onClick={() => {
-                        setHeaderFormData({
-                          workshopName: settings.workshopName,
-                          ownerName: settings.ownerName || '',
-                          managementTitle: settings.managementTitle ?? 'إدارة:',
-                          phone: settings.phone,
-                          email: settings.email || '',
-                          fontFamily: settings.fontFamily || 'Cairo',
-                          invoiceNotes: settings.invoiceNotes || '',
-                          showTermsHeading: !!settings.showTermsHeading,
-                          hideTermsBox: !!settings.hideTermsBox,
-                        });
-                        setIsEditHeaderModalOpen(true);
-                      }}
+                      onClick={() => openHeaderSettingsModal()}
                       className="no-print inline-flex items-center gap-1 text-[10px] text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-1.5 py-0.5 rounded cursor-pointer mr-1 font-bold transition-colors"
                       title="تغيير اسم الإدارة أو الإيميل أو نوع الخط أو الشروط"
                     >
@@ -576,7 +617,21 @@ export const InvoiceModal: React.FC<Props> = ({
                   <span className="font-black text-slate-950 text-base">{currentOrder.customerName}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 font-bold text-[11px] block">رقم الهاتف:</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 font-bold text-[11px] block">رقم الهاتف:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPhoneModalInput(currentOrder.customerPhone || '');
+                        setIsCustomerPhoneModalOpen(true);
+                      }}
+                      className="text-[10px] text-emerald-700 hover:text-emerald-900 font-bold flex items-center gap-0.5 no-print cursor-pointer"
+                      title="تعديل أو كتابة رقم هاتف الزبون للإرسال التلقائي"
+                    >
+                      <Edit2 className="w-2.5 h-2.5" />
+                      <span>{currentOrder.customerPhone ? 'تعديل' : '+ إضافة'}</span>
+                    </button>
+                  </div>
                   <span className="font-extrabold text-slate-900 font-mono text-sm" dir="ltr">
                     {currentOrder.customerPhone || '—'}
                   </span>
@@ -710,20 +765,7 @@ export const InvoiceModal: React.FC<Props> = ({
                           <span>ملاحظات الفاتورة:</span>
                           <button
                             type="button"
-                            onClick={() => {
-                              setHeaderFormData({
-                                workshopName: settings.workshopName,
-                                ownerName: settings.ownerName || '',
-                                managementTitle: settings.managementTitle ?? 'إدارة:',
-                                phone: settings.phone,
-                                email: settings.email || '',
-                                fontFamily: settings.fontFamily || 'Cairo',
-                                invoiceNotes: settings.invoiceNotes || '',
-                                showTermsHeading: !!settings.showTermsHeading,
-                                hideTermsBox: !!settings.hideTermsBox,
-                              });
-                              setIsEditHeaderModalOpen(true);
-                            }}
+                            onClick={() => openHeaderSettingsModal()}
                             className="no-print text-[10px] text-blue-600 hover:underline cursor-pointer"
                             title="تعديل الملاحظات"
                           >
@@ -747,20 +789,7 @@ export const InvoiceModal: React.FC<Props> = ({
                     <span className="text-[11px] text-slate-400">(تم إلغاء عبارة الشروط والأحكام من الفاتورة)</span>
                     <button
                       type="button"
-                      onClick={() => {
-                        setHeaderFormData({
-                          workshopName: settings.workshopName,
-                          ownerName: settings.ownerName || '',
-                          managementTitle: settings.managementTitle ?? 'إدارة:',
-                          phone: settings.phone,
-                          email: settings.email || '',
-                          fontFamily: settings.fontFamily || 'Cairo',
-                          invoiceNotes: settings.invoiceNotes || '',
-                          showTermsHeading: false,
-                          hideTermsBox: false,
-                        });
-                        setIsEditHeaderModalOpen(true);
-                      }}
+                      onClick={() => openHeaderSettingsModal({ showTermsHeading: false, hideTermsBox: false })}
                       className="text-[11px] text-blue-600 hover:underline cursor-pointer"
                     >
                       + إضافة ملاحظة
@@ -1338,6 +1367,61 @@ export const InvoiceModal: React.FC<Props> = ({
                 </p>
               </div>
 
+              {/* WhatsApp Auto Routing Settings (إعدادات توجيه واتساب التلقائي للزبون) */}
+              <div className="bg-emerald-50/70 p-3 rounded-xl border border-emerald-300 space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-emerald-950 flex items-center gap-1.5">
+                    <Send className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>إعدادات إرسال واتساب التلقائي للزبائن:</span>
+                  </label>
+                  <span className="text-[10px] bg-emerald-200 text-emerald-900 font-extrabold px-1.5 py-0.5 rounded">
+                    تلقائي بدون بحث
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      رمز الدولة الدولي لأرقام الزبائن:
+                    </label>
+                    <select
+                      value={headerFormData.defaultCountryCode || '+963'}
+                      onChange={(e) => setHeaderFormData({ ...headerFormData, defaultCountryCode: e.target.value })}
+                      className="w-full text-xs px-2.5 py-2 border border-emerald-300 rounded-lg font-bold text-slate-900 bg-white"
+                    >
+                      <option value="+963">سوريا (+963)</option>
+                      <option value="+970">فلسطين (+970 / +972)</option>
+                      <option value="+962">الأردن (+962)</option>
+                      <option value="+966">السعودية (+966)</option>
+                      <option value="+961">لبنان (+961)</option>
+                      <option value="+20">مصر (+20)</option>
+                      <option value="+971">الإمارات (+971)</option>
+                      <option value="+965">الكويت (+965)</option>
+                      <option value="+964">العراق (+964)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      تطبيق واتساب المعتمد بجهازك:
+                    </label>
+                    <select
+                      value={headerFormData.preferredWhatsAppType || 'business'}
+                      onChange={(e) => setHeaderFormData({ ...headerFormData, preferredWhatsAppType: e.target.value as any })}
+                      className="w-full text-xs px-2.5 py-2 border border-emerald-300 rounded-lg font-bold text-slate-900 bg-white"
+                    >
+                      <option value="business">واتساب للأعمال (WhatsApp Business)</option>
+                      <option value="standard">واتساب العادي (WhatsApp Messenger)</option>
+                      <option value="auto">تلقائي عام (Auto)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-emerald-800 leading-tight">
+                  💡 عند الضغط على "واتساب الزبون (تلقائي) ⚡"، يفتح التطبيق مباشرة في محادثة الزبون عبر رقمه دون الحاجة للبحث عن اسمه في جهات الاتصال.
+                </p>
+              </div>
+
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
                 <button
                   type="button"
@@ -1352,6 +1436,82 @@ export const InvoiceModal: React.FC<Props> = ({
                 >
                   <Check className="w-4 h-4" />
                   <span>حفظ وتحديث الفاتورة فوراً</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Phone Prompt Modal for Instant WhatsApp Routing */}
+      {isCustomerPhoneModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto font-['Cairo',sans-serif]">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-right">
+            <div className="px-5 py-3.5 bg-gradient-to-r from-emerald-800 to-teal-800 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center">
+                  <Phone className="w-4 h-4 text-emerald-200" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold">رقم هاتف الزبون للإرسال التلقائي</h3>
+                  <p className="text-[11px] text-emerald-200">{currentOrder.customerName}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCustomerPhoneModalOpen(false)}
+                className="p-1 text-white/70 hover:text-white rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmCustomerPhone} className="p-5 space-y-4 text-xs">
+              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-950 space-y-1">
+                <p className="font-bold flex items-center gap-1 text-xs">
+                  <span>⚡ انتقال فوري ومباشر لمحادثة الزبون</span>
+                </p>
+                <p className="text-[11px] text-emerald-800 leading-relaxed">
+                  أدخل رقم هاتف الزبون لكي يفتح واتساب محادثته مباشرة تلقائياً دون الحاجة للبحث عن اسمه في جهات الاتصال.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  رقم هاتف الزبون (موبايل أو واتساب):
+                </label>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    required
+                    autoFocus
+                    value={phoneModalInput}
+                    onChange={(e) => setPhoneModalInput(e.target.value)}
+                    placeholder="مثال: 0961141216 أو 0599123456"
+                    className="w-full text-sm px-3.5 py-2.5 bg-white border-2 border-emerald-500 rounded-xl font-mono text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 text-left"
+                    dir="ltr"
+                  />
+                  <Phone className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  💡 يقبل الأرقام المحلية (09...) أو مع كود الدولة الدولي (+963...) والأرقام العربية والإنجليزية.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setIsCustomerPhoneModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>حفظ وفتح المحادثة تلقائياً ⚡</span>
                 </button>
               </div>
             </form>

@@ -20,6 +20,7 @@ interface Props {
   title: string;
   subtitle?: string;
   defaultPhone?: string;
+  countryCode?: string;
   messageText: string;
   onClose: () => void;
   onDownloadPdf?: () => void;
@@ -33,6 +34,7 @@ export const WhatsAppShareModal: React.FC<Props> = ({
   title,
   subtitle,
   defaultPhone = '',
+  countryCode,
   messageText,
   onClose,
   onDownloadPdf,
@@ -51,6 +53,7 @@ export const WhatsAppShareModal: React.FC<Props> = ({
       phone,
       text: messageText,
       type: 'standard',
+      countryCode,
     });
     setShareSuccess('تم فتح واتساب العادي');
     setTimeout(() => setShareSuccess(null), 3000);
@@ -61,6 +64,7 @@ export const WhatsAppShareModal: React.FC<Props> = ({
       phone,
       text: messageText,
       type: 'business',
+      countryCode,
     });
     setShareSuccess('تم فتح واتساب الأعمال (Business)');
     setTimeout(() => setShareSuccess(null), 3000);
@@ -144,9 +148,38 @@ export const WhatsAppShareModal: React.FC<Props> = ({
           </div>
 
           {/* Action Sharing Buttons Grid */}
-          <div className="space-y-2 pt-1">
-            <div className="text-xs font-bold text-slate-700 mb-2 flex items-center gap-1.5">
-              <span>اختر تطبيق المشاركة المطلوب:</span>
+          <div className="space-y-3 pt-1">
+            {/* Direct Automatic Customer Send Banner */}
+            {phone && onShareImage && (
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-400 p-3.5 rounded-2xl flex items-center justify-between gap-3 shadow-2xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                    ⚡
+                  </div>
+                  <div>
+                    <div className="text-xs font-black text-emerald-950">
+                      إرسال تلقائي مباشر لمحادثة الزبون
+                    </div>
+                    <div className="text-[11px] text-emerald-800">
+                      يدخل مباشرة إلى محادثة ({phone}) دون الحاجة للبحث إطلاقاً
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onShareImage();
+                    setShareSuccess('جاري الانتقال لمحادثة الزبون مباشرة...');
+                  }}
+                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer shrink-0 transition-all"
+                >
+                  إرسال مباشر 🚀
+                </button>
+              </div>
+            )}
+
+            <div className="text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+              <span>خيارات المشاركة والتحميل:</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">

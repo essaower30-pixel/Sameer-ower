@@ -133,6 +133,8 @@ export interface WorkshopSettings {
   hideTermsBox?: boolean; // إخفاء صندوق الشروط والملاحظات بالكامل من الفاتورة
   managementTitle?: string; // صفة الإدارة (افتراضياً: 'إدارة:' أو تركها فارغة)
   fontFamily?: 'Cairo' | 'Tajawal' | 'IBM Plex Sans Arabic' | 'Almarai'; // نوع الخط العربي المعتمد
+  defaultCountryCode?: string; // رمز النداء الدولي للبلد لإرسال واتساب للزبون تلقائياً دون بحث (مثال: +963 أو +970 أو +962 أو +966)
+  preferredWhatsAppType?: 'business' | 'standard' | 'auto'; // نوع واتساب المفضل (واتساب للأعمال افتراضياً)
   defaultCosts: Record<ProductCategory, { costPerMeter: number; pricePerMeter: number; minArea: number }>;
 }
 
@@ -328,6 +330,8 @@ export const DEFAULT_SETTINGS: WorkshopSettings = {
   hideTermsBox: false,
   managementTitle: 'إدارة:',
   fontFamily: 'Cairo',
+  defaultCountryCode: '+963',
+  preferredWhatsAppType: 'business',
   defaultCosts: {
     aluminum: { costPerMeter: 45, pricePerMeter: 75, minArea: 1.0 },
     accordion: { costPerMeter: 25, pricePerMeter: 45, minArea: 1.8 },

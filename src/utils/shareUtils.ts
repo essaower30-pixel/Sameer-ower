@@ -4,92 +4,185 @@ import { formatCurrency, getOrderPayments, getSupplierPayments } from './calcula
 export interface WhatsAppShareOptions {
   phone?: string;
   text: string;
-  type?: 'standard' | 'business';
+  type?: 'standard' | 'business' | 'auto';
+  countryCode?: string;
 }
 
 /**
- * Format phone number for WhatsApp deep link
+ * Format phone number for WhatsApp deep link with international code resolution.
+ * Ensures numbers like '0961141216' or '0599123456' resolve to '963961141216' or '970599123456'
+ * so WhatsApp navigates directly into the customer chat without prompting for contact search.
+ * Handles both Arabic-Indic numerals (٠-٩) and standard Latin digits (0-9).
  */
-export function cleanPhoneNumber(phone?: string): string {
+export function cleanPhoneNumber(phone?: string, defaultCountryCode?: string): string {
   if (!phone) return '';
-  let cleaned = phone.replace(/[^0-9+]/g, '');
+
+  // 1. Convert Arabic-Indic (٠-٩) and Eastern Persian (۰-۹) digits to standard digits (0-9)
+  const normalized = phone
+    .replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString())
+    .replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d).toString());
+
+  // 2. Remove all non-digit and non-plus characters
+  let cleaned = normalized.replace(/[^0-9+]/g, '');
+  if (!cleaned) return '';
+
+  // 3. Remove leading international prefix '00' or '+'
   if (cleaned.startsWith('00')) {
     cleaned = cleaned.substring(2);
   } else if (cleaned.startsWith('+')) {
     cleaned = cleaned.substring(1);
-  } else if (cleaned.startsWith('0')) {
-    cleaned = cleaned.substring(1);
   }
+
+  // Clean default country code digits (e.g. "+963" -> "963")
+  const defaultCode = (defaultCountryCode || '+963').replace(/[^0-9]/g, '') || '963';
+
+  // 4. Already starts with a recognized international dial code
+  const knownPrefixes = ['963', '970', '972', '962', '966', '961', '20', '971', '965', '974', '968', '973', '964'];
+  for (const prefix of knownPrefixes) {
+    if (cleaned.startsWith(prefix) && cleaned.length >= prefix.length + 7) {
+      return cleaned;
+    }
+  }
+
+  // 5. Local phone numbers starting with '0'
+  if (cleaned.startsWith('0')) {
+    const withoutZero = cleaned.substring(1);
+
+    // If explicit default country code is provided, use it
+    if (defaultCountryCode) {
+      return `${defaultCode}${withoutZero}`;
+    }
+
+    // Auto-detection based on common regional prefixes:
+    // Syria: starts with 09... (e.g. 0961141216 -> 963961141216)
+    if (cleaned.startsWith('09')) {
+      return `963${withoutZero}`;
+    }
+    // Palestine: starts with 059... or 056...
+    if (cleaned.startsWith('059') || cleaned.startsWith('056')) {
+      return `970${withoutZero}`;
+    }
+    // Jordan: starts with 07...
+    if (cleaned.startsWith('07')) {
+      return `962${withoutZero}`;
+    }
+    // Saudi Arabia: starts with 05...
+    if (cleaned.startsWith('05')) {
+      return `966${withoutZero}`;
+    }
+    // Egypt: starts with 01...
+    if (cleaned.startsWith('01')) {
+      return `20${withoutZero}`;
+    }
+    // Lebanon: starts with 03...
+    if (cleaned.startsWith('03')) {
+      return `961${withoutZero}`;
+    }
+
+    return `${defaultCode}${withoutZero}`;
+  }
+
+  // 6. Local numbers without leading zero (e.g. 961141216 or 933123456 in Syria)
+  if (cleaned.length === 9 && cleaned.startsWith('9')) {
+    return `963${cleaned}`;
+  }
+  if (cleaned.length === 9 && (cleaned.startsWith('59') || cleaned.startsWith('56'))) {
+    return `970${cleaned}`;
+  }
+  if (cleaned.length === 9 && cleaned.startsWith('7')) {
+    return `962${cleaned}`;
+  }
+
+  // 7. If the number does not already start with the default country code, prepend it
+  if (!cleaned.startsWith(defaultCode) && cleaned.length <= 10) {
+    return `${defaultCode}${cleaned}`;
+  }
+
   return cleaned;
 }
 
 /**
- * Opens WhatsApp Messenger or WhatsApp Business
+ * Copies an image Blob to the clipboard so the user can paste it directly into WhatsApp
  */
-export function openWhatsApp({ phone, text, type = 'standard' }: WhatsAppShareOptions): void {
-  const cleanedPhone = cleanPhoneNumber(phone);
+export async function copyImageBlobToClipboard(blob: Blob): Promise<boolean> {
+  if (typeof navigator === 'undefined' || !navigator.clipboard || !window.ClipboardItem) {
+    return false;
+  }
+  try {
+    const item = new ClipboardItem({ [blob.type || 'image/png']: blob });
+    await navigator.clipboard.write([item]);
+    return true;
+  } catch (err) {
+    console.warn('Clipboard write failed:', err);
+    return false;
+  }
+}
+
+/**
+ * Opens WhatsApp Messenger or WhatsApp Business directly into the customer's chat.
+ * Uses official direct deep-links that bypass the contact-picker and immediately navigate
+ * to the specified phone number.
+ */
+export function openWhatsApp({
+  phone,
+  text,
+  type = 'auto',
+  countryCode,
+}: WhatsAppShareOptions): void {
+  const cleanedPhone = cleanPhoneNumber(phone, countryCode);
   const encodedText = encodeURIComponent(text);
   const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
-  const isIOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-  const phoneParam = cleanedPhone ? `phone=${cleanedPhone}&` : '';
+  // When a valid customer phone is available, open the exact chat directly!
+  if (cleanedPhone) {
+    const directUrl = `https://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodedText}`;
 
-  if (type === 'business') {
-    if (isAndroid) {
-      // Android Intent directly targeting WhatsApp Business package
-      const intentUrl = `intent://send?${phoneParam}text=${encodedText}#Intent;package=com.whatsapp.w4b;scheme=whatsapp;end`;
+    // On Android: if user explicitly selected WhatsApp Business, use the verified package intent
+    if (type === 'business' && isAndroid) {
+      const intentUrl = `intent://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodedText}#Intent;package=com.whatsapp.w4b;scheme=https;end`;
       try {
         window.location.href = intentUrl;
+        setTimeout(() => {
+          // Fallback if WhatsApp Business app is not installed
+          window.location.href = directUrl;
+        }, 1200);
         return;
       } catch (e) {
         console.warn('Failed to launch WhatsApp Business via intent', e);
       }
-    } else if (isIOS) {
-      // iOS WhatsApp Business URL scheme
-      const iosUrl = `whatsapp-business://send?${phoneParam}text=${encodedText}`;
-      window.location.href = iosUrl;
-      return;
     }
 
-    // Fallback: Custom scheme or web
-    const businessScheme = `whatsapp-business://send?${phoneParam}text=${encodedText}`;
-    try {
-      window.location.href = businessScheme;
-      // If nothing happens after 800ms, fallback to web
-      setTimeout(() => {
-        const fallbackUrl = cleanedPhone
-          ? `https://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodedText}`
-          : `https://api.whatsapp.com/send?text=${encodedText}`;
-        window.open(fallbackUrl, '_blank');
-      }, 900);
-      return;
-    } catch {
-      // Fallback
+    // On Android: if user explicitly selected standard WhatsApp, target com.whatsapp
+    if (type === 'standard' && isAndroid) {
+      const intentUrl = `intent://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodedText}#Intent;package=com.whatsapp;scheme=https;end`;
+      try {
+        window.location.href = intentUrl;
+        setTimeout(() => {
+          window.location.href = directUrl;
+        }, 1200);
+        return;
+      } catch (e) {
+        console.warn('Failed to launch WhatsApp via intent', e);
+      }
     }
+
+    // Universal route for Auto, iOS, Desktop and all Android configurations
+    if (isMobile) {
+      window.location.href = directUrl;
+    } else {
+      window.open(directUrl, '_blank', 'noopener,noreferrer');
+    }
+    return;
   }
 
-  // Standard WhatsApp
+  // Fallback if no phone number was found: open WhatsApp text share
+  const fallbackUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
   if (isMobile) {
-    const mobileScheme = `whatsapp://send?${phoneParam}text=${encodedText}`;
-    try {
-      window.location.href = mobileScheme;
-      setTimeout(() => {
-        const webUrl = cleanedPhone
-          ? `https://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodedText}`
-          : `https://api.whatsapp.com/send?text=${encodedText}`;
-        window.open(webUrl, '_blank');
-      }, 900);
-      return;
-    } catch {
-      // Fallback
-    }
+    window.location.href = fallbackUrl;
+  } else {
+    window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
   }
-
-  const webUrl = cleanedPhone
-    ? `https://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodedText}`
-    : `https://api.whatsapp.com/send?text=${encodedText}`;
-  window.open(webUrl, '_blank');
 }
 
 /**
