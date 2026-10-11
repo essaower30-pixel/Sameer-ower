@@ -1,4 +1,4 @@
-const CACHE_NAME = 'workshop-cache-v16-20261007-quantity-stepper';
+const CACHE_NAME = 'workshop-cache-v17-20261011-direct-whatsapp-fix';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.webmanifest',
@@ -109,9 +109,12 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (!url.protocol.startsWith('http')) return;
 
-  // NEVER intercept Vite internal dev bundles, auth bridges or control plane
+  // NEVER intercept Vite internal dev bundles, source files, auth bridges or control plane
   if (
     url.pathname.startsWith('/@') ||
+    url.pathname.startsWith('/src/') ||
+    url.pathname.startsWith('/node_modules/') ||
+    url.pathname.includes('version.json') ||
     url.pathname.includes('cookie_check') ||
     url.pathname.includes('applet-auth') ||
     url.search.includes('__aistudio')

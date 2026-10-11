@@ -160,7 +160,7 @@ export const PWAInstallButton: React.FC = () => {
                         setInstallSuccessMessage(true);
                       }
                     } else {
-                      window.location.reload();
+                      setShowSecondaryGuide(true);
                     }
                   } finally {
                     setIsProcessing(false);

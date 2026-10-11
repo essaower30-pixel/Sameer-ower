@@ -14,7 +14,8 @@ export default defineConfig(() => {
         name: 'serve-pwa-sw',
         configureServer(server) {
           server.middlewares.use((req, res, next) => {
-            if (req.url === '/sw.js') {
+            const cleanUrl = req.url ? req.url.split('?')[0] : '';
+            if (cleanUrl === '/sw.js') {
               const swPath = path.resolve(__dirname, 'public/sw.js');
               if (fs.existsSync(swPath)) {
                 res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
@@ -25,12 +26,22 @@ export default defineConfig(() => {
                 return fs.createReadStream(swPath).pipe(res);
               }
             }
-            if (req.url === '/' || req.url === '/index.html') {
+            if (cleanUrl === '/version.json') {
+              const vPath = path.resolve(__dirname, 'public/version.json');
+              if (fs.existsSync(vPath)) {
+                res.setHeader('Content-Type', 'application/json; charset=utf-8');
+                res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+                res.setHeader('Pragma', 'no-cache');
+                res.setHeader('Expires', '0');
+                return fs.createReadStream(vPath).pipe(res);
+              }
+            }
+            if (cleanUrl === '/' || cleanUrl === '/index.html') {
               res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
               res.setHeader('Pragma', 'no-cache');
               res.setHeader('Expires', '0');
             }
-            if (req.url === '/manifest.webmanifest' || req.url === '/manifest.json') {
+            if (cleanUrl === '/manifest.webmanifest' || cleanUrl === '/manifest.json') {
               const mPath = path.resolve(__dirname, 'public/manifest.webmanifest');
               if (fs.existsSync(mPath)) {
                 res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');

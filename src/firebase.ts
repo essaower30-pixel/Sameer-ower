@@ -4,19 +4,27 @@ import {
   getFirestore,
   doc,
   getDocFromServer,
+  setLogLevel,
   Firestore,
 } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import firebaseConfig from '../firebase-applet-config.json';
 
+// Silence internal transport retry logs from polluting console or triggering false alerts
+try {
+  setLogLevel('silent');
+} catch {
+  // Ignore in environments where setLogLevel is not supported
+}
+
 // Initialize Firebase
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// Initialize Firestore with specific database ID and auto-detect long polling for resilient connections
+// Initialize Firestore with specific database ID and forced long polling for maximum reliability across proxies and mobile networks
 let firestoreDb: Firestore;
 try {
   firestoreDb = initializeFirestore(app, {
-    experimentalAutoDetectLongPolling: true,
+    experimentalForceLongPolling: true,
   }, firebaseConfig.firestoreDatabaseId);
 } catch {
   firestoreDb = getFirestore(app, firebaseConfig.firestoreDatabaseId);
