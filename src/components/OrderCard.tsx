@@ -345,6 +345,9 @@ export const OrderCard: React.FC<Props> = ({
           subtitle={`فاتورة #${order.orderNumber} - الزبون: ${order.customerName}`}
           defaultPhone={order.customerPhone}
           messageText={invoiceText}
+          onUpdatePhone={(newPhone) => {
+            onEdit({ ...order, customerPhone: newPhone });
+          }}
           onClose={() => setIsShareModalOpen(false)}
         />
       )}

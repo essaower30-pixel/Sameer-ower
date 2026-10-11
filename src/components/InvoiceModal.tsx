@@ -217,6 +217,19 @@ export const InvoiceModal: React.FC<Props> = ({
     setIsGeneratingImage(true);
     try {
       const targetPhone = phoneToUse !== undefined && phoneToUse.trim() ? phoneToUse.trim() : currentOrder.customerPhone;
+
+      // Persist phone to order if it was modified
+      if (phoneToUse && phoneToUse.trim() && phoneToUse.trim() !== currentOrder.customerPhone) {
+        const updated: CustomerOrder = {
+          ...currentOrder,
+          customerPhone: phoneToUse.trim(),
+        };
+        setCurrentOrder(updated);
+        if (onUpdateOrder) {
+          onUpdateOrder(updated);
+        }
+      }
+
       const cleanCustomer = (currentOrder.customerName || 'الزبون').replace(/[\/\\?%*:|"<>]/g, '-').trim();
       const fileName = `فاتورة_${cleanCustomer}_${currentOrder.orderNumber}.png`;
 
@@ -1087,7 +1100,18 @@ export const InvoiceModal: React.FC<Props> = ({
           title="مشاركة فاتورة البيع"
           subtitle={`فاتورة رقم: ${currentOrder.orderNumber} - الزبون: ${currentOrder.customerName}`}
           defaultPhone={currentOrder.customerPhone}
+          countryCode={settings.defaultCountryCode || '+963'}
           messageText={messageText}
+          onUpdatePhone={(newPhone) => {
+            const updated: CustomerOrder = {
+              ...currentOrder,
+              customerPhone: newPhone,
+            };
+            setCurrentOrder(updated);
+            if (onUpdateOrder) {
+              onUpdateOrder(updated);
+            }
+          }}
           onSharePdf={(phoneOverride, appType) => {
             executeSharePdf(phoneOverride, appType);
           }}

@@ -96,6 +96,142 @@ export function cleanPhoneNumber(phone?: string, defaultCountryCode?: string): s
   return cleaned;
 }
 
+export interface DetectedPhoneInfo {
+  countryCode: string;
+  countryName: string;
+  flag: string;
+  cleaned: string;
+  formattedDisplay: string;
+  isValid: boolean;
+}
+
+/**
+ * Detect country, validity, and formatted international number for display
+ */
+export function detectPhoneCountry(phone?: string, defaultCountryCode?: string): DetectedPhoneInfo {
+  const defCode = defaultCountryCode || '+963';
+  if (!phone || !phone.trim()) {
+    return {
+      countryCode: defCode,
+      countryName: defCode === '+970' ? 'فلسطين' : defCode === '+962' ? 'الأردن' : defCode === '+966' ? 'السعودية' : 'سوريا',
+      flag: defCode === '+970' ? '🇵🇸' : defCode === '+962' ? '🇯🇴' : defCode === '+966' ? '🇸🇦' : '🇸🇾',
+      cleaned: '',
+      formattedDisplay: '',
+      isValid: false,
+    };
+  }
+
+  const cleaned = cleanPhoneNumber(phone, defCode);
+  if (!cleaned || cleaned.length < 8) {
+    return {
+      countryCode: defCode,
+      countryName: 'غير مكتمل',
+      flag: '⚠️',
+      cleaned,
+      formattedDisplay: phone,
+      isValid: false,
+    };
+  }
+
+  if (cleaned.startsWith('963')) {
+    const local = cleaned.substring(3);
+    return {
+      countryCode: '+963',
+      countryName: 'سوريا',
+      flag: '🇸🇾',
+      cleaned,
+      formattedDisplay: `+963 ${local.substring(0, 3)} ${local.substring(3, 6)} ${local.substring(6)}`.trim(),
+      isValid: true,
+    };
+  }
+  if (cleaned.startsWith('970') || cleaned.startsWith('972')) {
+    const local = cleaned.substring(3);
+    return {
+      countryCode: '+970',
+      countryName: 'فلسطين',
+      flag: '🇵🇸',
+      cleaned,
+      formattedDisplay: `+970 ${local.substring(0, 3)} ${local.substring(3)}`.trim(),
+      isValid: true,
+    };
+  }
+  if (cleaned.startsWith('962')) {
+    const local = cleaned.substring(3);
+    return {
+      countryCode: '+962',
+      countryName: 'الأردن',
+      flag: '🇯🇴',
+      cleaned,
+      formattedDisplay: `+962 ${local.substring(0, 2)} ${local.substring(2)}`.trim(),
+      isValid: true,
+    };
+  }
+  if (cleaned.startsWith('966')) {
+    const local = cleaned.substring(3);
+    return {
+      countryCode: '+966',
+      countryName: 'السعودية',
+      flag: '🇸🇦',
+      cleaned,
+      formattedDisplay: `+966 ${local.substring(0, 2)} ${local.substring(2)}`.trim(),
+      isValid: true,
+    };
+  }
+  if (cleaned.startsWith('961')) {
+    const local = cleaned.substring(3);
+    return {
+      countryCode: '+961',
+      countryName: 'لبنان',
+      flag: '🇱🇧',
+      cleaned,
+      formattedDisplay: `+961 ${local.substring(0, 2)} ${local.substring(2)}`.trim(),
+      isValid: true,
+    };
+  }
+  if (cleaned.startsWith('20')) {
+    const local = cleaned.substring(2);
+    return {
+      countryCode: '+20',
+      countryName: 'مصر',
+      flag: '🇪🇬',
+      cleaned,
+      formattedDisplay: `+20 ${local.substring(0, 3)} ${local.substring(3)}`.trim(),
+      isValid: true,
+    };
+  }
+  if (cleaned.startsWith('90')) {
+    const local = cleaned.substring(2);
+    return {
+      countryCode: '+90',
+      countryName: 'تركيا',
+      flag: '🇹🇷',
+      cleaned,
+      formattedDisplay: `+90 ${local.substring(0, 3)} ${local.substring(3)}`.trim(),
+      isValid: true,
+    };
+  }
+  if (cleaned.startsWith('964')) {
+    const local = cleaned.substring(3);
+    return {
+      countryCode: '+964',
+      countryName: 'العراق',
+      flag: '🇮🇶',
+      cleaned,
+      formattedDisplay: `+964 ${local.substring(0, 3)} ${local.substring(3)}`.trim(),
+      isValid: true,
+    };
+  }
+
+  return {
+    countryCode: `+${cleaned.substring(0, 3)}`,
+    countryName: 'دولي',
+    flag: '🌍',
+    cleaned,
+    formattedDisplay: `+${cleaned}`,
+    isValid: true,
+  };
+}
+
 /**
  * Copies an image Blob to the clipboard so the user can paste it directly into WhatsApp
  */
@@ -115,8 +251,8 @@ export async function copyImageBlobToClipboard(blob: Blob): Promise<boolean> {
 
 /**
  * Opens WhatsApp Messenger or WhatsApp Business directly into the customer's chat.
- * Uses official direct deep-links (https://wa.me/<phone>) that bypass the contact-picker
- * and immediately navigate to the customer's chat with the pre-filled invoice message.
+ * Uses official direct deep-links (https://api.whatsapp.com/send?phone=<phone> or https://wa.me/<phone>)
+ * that bypass the contact-picker and immediately navigate into the customer's chat.
  */
 export function openWhatsApp({
   phone,
@@ -129,7 +265,7 @@ export function openWhatsApp({
   const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
 
-  const triggerDeepLink = (url: string) => {
+  const triggerDirectUrl = (url: string) => {
     try {
       const link = document.createElement('a');
       link.href = url;
@@ -144,13 +280,15 @@ export function openWhatsApp({
 
   // When a valid customer phone is available, open the exact chat directly!
   if (cleanedPhone) {
+    const directChatUrl = `https://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodedText}`;
     const waMeUrl = `https://wa.me/${cleanedPhone}?text=${encodedText}`;
 
     // On Android: if user explicitly selected WhatsApp Business
     if (type === 'business' && isAndroid) {
-      const intentUrl = `intent://send?phone=${cleanedPhone}&text=${encodedText}#Intent;package=com.whatsapp.w4b;scheme=whatsapp;end`;
+      // Use HTTPS scheme with package name to ensure WhatsApp Business handles the phone parameter
+      const businessIntentUrl = `intent://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodedText}#Intent;package=com.whatsapp.w4b;scheme=https;end`;
       try {
-        triggerDeepLink(intentUrl);
+        triggerDirectUrl(businessIntentUrl);
         return;
       } catch (e) {
         console.warn('Failed to launch WhatsApp Business via intent', e);
@@ -159,48 +297,28 @@ export function openWhatsApp({
 
     // On Android: if user explicitly selected standard WhatsApp
     if (type === 'standard' && isAndroid) {
-      const intentUrl = `intent://send?phone=${cleanedPhone}&text=${encodedText}#Intent;package=com.whatsapp;scheme=whatsapp;end`;
+      const standardIntentUrl = `intent://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodedText}#Intent;package=com.whatsapp;scheme=https;end`;
       try {
-        triggerDeepLink(intentUrl);
+        triggerDirectUrl(standardIntentUrl);
         return;
       } catch (e) {
         console.warn('Failed to launch WhatsApp via intent', e);
       }
     }
 
-    // Universal route for Auto, iOS, Desktop and Android:
+    // Universal direct route:
     if (isMobile) {
-      triggerDeepLink(waMeUrl);
+      triggerDirectUrl(directChatUrl);
     } else {
       window.open(waMeUrl, '_blank', 'noopener,noreferrer');
     }
     return;
   }
 
-  // Fallback if no phone number was found: open WhatsApp text share
-  if (type === 'business' && isAndroid) {
-    const intentUrl = `intent://send?text=${encodedText}#Intent;package=com.whatsapp.w4b;scheme=whatsapp;end`;
-    try {
-      window.location.href = intentUrl;
-      return;
-    } catch (e) {
-      console.warn('Failed to launch WhatsApp Business via intent', e);
-    }
-  }
-
-  if (type === 'standard' && isAndroid) {
-    const intentUrl = `intent://send?text=${encodedText}#Intent;package=com.whatsapp;scheme=whatsapp;end`;
-    try {
-      window.location.href = intentUrl;
-      return;
-    } catch (e) {
-      console.warn('Failed to launch WhatsApp via intent', e);
-    }
-  }
-
+  // Fallback if no phone number was found:
   const fallbackUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
   if (isMobile) {
-    window.location.href = fallbackUrl;
+    triggerDirectUrl(fallbackUrl);
   } else {
     window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
   }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Share2,
@@ -12,8 +12,17 @@ import {
   Image as ImageIcon,
   Download,
   Zap,
+  AlertTriangle,
+  Save,
+  PhoneCall,
 } from 'lucide-react';
-import { shareViaNativeSheet, copyToClipboard } from '../utils/shareUtils';
+import {
+  shareViaNativeSheet,
+  copyToClipboard,
+  openWhatsApp,
+  detectPhoneCountry,
+  DetectedPhoneInfo,
+} from '../utils/shareUtils';
 
 interface Props {
   isOpen: boolean;
@@ -23,6 +32,7 @@ interface Props {
   countryCode?: string;
   messageText: string;
   onClose: () => void;
+  onUpdatePhone?: (phone: string) => void;
   onDownloadPdf?: () => void;
   onSharePdf?: (phoneOverride?: string, appType?: 'standard' | 'business') => void;
   onShareImage?: (phoneOverride?: string, appType?: 'standard' | 'business') => void;
@@ -35,19 +45,37 @@ export const WhatsAppShareModal: React.FC<Props> = ({
   title,
   subtitle,
   defaultPhone = '',
+  countryCode = '+963',
   messageText,
   onClose,
+  onUpdatePhone,
   onDownloadPdf,
   onSharePdf,
   onShareImage,
   onShareImageFile,
   onDownloadImage,
 }) => {
-  const [phone, setPhone] = useState(defaultPhone);
+  const [phone, setPhone] = useState(defaultPhone || '');
+  const [selectedCountryCode, setSelectedCountryCode] = useState(countryCode || '+963');
   const [copied, setCopied] = useState(false);
   const [shareSuccess, setShareSuccess] = useState<string | null>(null);
+  const [phoneWarning, setPhoneWarning] = useState<string | null>(null);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync phone state when defaultPhone changes
+  useEffect(() => {
+    setPhone(defaultPhone || '');
+  }, [defaultPhone]);
+
+  useEffect(() => {
+    if (countryCode) {
+      setSelectedCountryCode(countryCode);
+    }
+  }, [countryCode]);
 
   if (!isOpen) return null;
+
+  const phoneInfo: DetectedPhoneInfo = detectPhoneCountry(phone, selectedCountryCode);
 
   const handleNativeShare = async () => {
     const success = await shareViaNativeSheet(title, messageText);
@@ -64,8 +92,53 @@ export const WhatsAppShareModal: React.FC<Props> = ({
       setShareSuccess('تم نسخ نص الفاتورة إلى الحافظة بنجاح!');
       setTimeout(() => {
         setCopied(false);
-        setShareSuccess(null);
-      }, 2500);
+        setShareSuccess(null), 2500;
+      });
+    }
+  };
+
+  const handleSavePhone = () => {
+    const trimmed = phone.trim();
+    if (!trimmed) {
+      setPhoneWarning('يرجى إدخال رقم الهاتف أولاً قبل الحفظ');
+      setTimeout(() => setPhoneWarning(null), 3000);
+      return;
+    }
+    if (onUpdatePhone) {
+      onUpdatePhone(trimmed);
+      setShareSuccess('✅ تم حفظ رقم الهاتف في الفاتورة بنجاح!');
+      setPhoneWarning(null);
+      setTimeout(() => setShareSuccess(null), 3500);
+    }
+  };
+
+  const handleTriggerDirectSend = (type: 'standard' | 'business') => {
+    const trimmed = phone.trim();
+    if (!trimmed || !phoneInfo.isValid) {
+      setPhoneWarning('⚠️ يرجى إدخال رقم هاتف الزبون للانتقال لمحادثته مباشرة دون بحث!');
+      phoneInputRef.current?.focus();
+      setTimeout(() => setPhoneWarning(null), 4000);
+      return;
+    }
+
+    // Auto-save phone to order if it was edited
+    if (trimmed !== defaultPhone && onUpdatePhone) {
+      onUpdatePhone(trimmed);
+    }
+
+    const appLabel = type === 'business' ? 'واتساب للأعمال' : 'واتساب';
+
+    if (onShareImage) {
+      onShareImage(trimmed, type);
+      setShareSuccess(`⚡ جاري فتح محادثة الزبون في ${appLabel}... نُسخت صورة الفاتورة للصقها فوراً!`);
+    } else {
+      openWhatsApp({
+        phone: trimmed,
+        text: messageText,
+        type,
+        countryCode: selectedCountryCode,
+      });
+      setShareSuccess(`⚡ جاري فتح محادثة الزبون في ${appLabel} مباشرة برقم هاتفه...`);
     }
   };
 
@@ -103,218 +176,284 @@ export const WhatsAppShareModal: React.FC<Props> = ({
             </div>
           )}
 
-          {/* Privacy & Direct Delivery Notice */}
-          <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-2.5 text-[11px] text-emerald-950 flex items-start gap-2">
-            <span className="text-emerald-600 text-xs shrink-0 mt-0.5">⚡</span>
-            <div>
-              <span className="font-bold">إرسال فوري ومباشر للزبون: </span>
-              عند الضغط على <strong className="text-teal-800">واتساب للأعمال</strong> أو <strong className="text-emerald-800">واتساب</strong> أدناه، يتم فتح محادثة الزبون مباشرة برقم هاتفه دون أي بحث، مع نسخ صورة الفاتورة تلقائياً لتلصقها (Paste) فوراً، ودون حفظ أي ملف في ذاكرة هاتفك.
-            </div>
-          </div>
-
-          {/* Customer Phone Input Field */}
-          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <span>رقم هاتف الزبون:</span>
-                {phone.trim() && (
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <Zap className="w-3 h-3 text-emerald-600" />
-                    دخول مباشر لمحادثته
-                  </span>
-                )}
-              </label>
-            </div>
-            <div className="relative">
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="مثال: 0933123456 أو 0791234567"
-                dir="ltr"
-                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-xs font-mono text-left focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-hidden transition-all"
-              />
-              <span className="absolute left-3 top-2 text-[10px] text-slate-400 pointer-events-none">
-                مع المفتاح الدولي أو بدونه
-              </span>
-            </div>
-            <p className="text-[10px] text-emerald-700 font-semibold mt-1">
-              * عند إدخال الرقم يتم الدخول مباشرة إلى محادثة الزبون فوراً دون الحاجة للبحث عن اسمه.
-            </p>
-          </div>
-
-          {/* SECTION 1: Send As Image / Direct Chat */}
-          {onShareImage && (
-            <div className="bg-purple-50/60 border border-purple-200 rounded-2xl p-3.5 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-purple-600 text-white flex items-center justify-center shadow-2xs">
-                    <ImageIcon className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-black text-purple-950">إرسال الفاتورة كصورة 🖼️</h4>
-                    <p className="text-[10px] text-purple-700">دخول مباشر لمحادثة الزبون مع نسخ الصورة للصقها فوراً</p>
-                  </div>
-                </div>
-                <span className="text-[10px] bg-purple-200/80 text-purple-800 font-bold px-2 py-0.5 rounded-full">
-                  دخول مباشر للزبون
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                {/* WhatsApp Business for Image (Direct to Customer) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    onShareImage(phone, 'business');
-                    setShareSuccess('جاري فتح محادثة الزبون في واتساب للأعمال... نُسخت صورة الفاتورة للصقها فوراً!');
-                  }}
-                  className="flex items-center gap-2.5 p-2.5 bg-white hover:bg-teal-50 active:bg-teal-100 border-2 border-teal-500 rounded-xl text-right transition-all group cursor-pointer shadow-2xs hover:shadow-xs order-1 sm:order-2"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-teal-700 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <Briefcase className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold text-slate-900 flex items-center justify-between">
-                      <span>واتساب للأعمال</span>
-                      <span className="bg-teal-700 text-white text-[9px] px-1 py-0.2 rounded font-mono font-bold">
-                        Business
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-teal-700 font-medium truncate">
-                      دخول مباشر لمحادثة الزبون
-                    </div>
-                  </div>
-                </button>
-
-                {/* Standard WhatsApp for Image (Direct to Customer) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    onShareImage(phone, 'standard');
-                    setShareSuccess('جاري فتح محادثة الزبون في واتساب... نُسخت صورة الفاتورة للصقها فوراً!');
-                  }}
-                  className="flex items-center gap-2.5 p-2.5 bg-white hover:bg-emerald-50 active:bg-emerald-100 border-2 border-emerald-400 rounded-xl text-right transition-all group cursor-pointer shadow-2xs hover:shadow-xs order-2 sm:order-1"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <MessageSquare className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                      <span>واتساب العادي</span>
-                    </div>
-                    <div className="text-[10px] text-emerald-700 font-medium truncate">
-                      دخول مباشر لمحادثة الزبون
-                    </div>
-                  </div>
-                </button>
-              </div>
-
-              {/* Optional: Native Share Sheet for Image file */}
-              {onShareImageFile && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onShareImageFile();
-                    setShareSuccess('جاري فتح قائمة مشاركة النظام لإرسال ملف الصورة...');
-                  }}
-                  className="w-full mt-1.5 py-2 px-3 bg-white hover:bg-purple-100/60 text-purple-900 border border-purple-200 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-                >
-                  <Share2 className="w-3.5 h-3.5 text-purple-600" />
-                  <span>مشاركة كملف صورة عبر قائمة تطبيقات أندرويد (Share Sheet)</span>
-                </button>
-              )}
-
-              <div className="bg-purple-100/50 rounded-xl p-2 text-[10px] text-purple-900 flex items-start gap-1.5 leading-relaxed">
-                <span className="text-purple-600 font-bold shrink-0 mt-0.5">💡</span>
-                <span>
-                  <strong>طريقة عمل الصورة:</strong> يتم نقلك مباشرة لمحادثة الزبون دون بحث، وتكون صورة الفاتورة منسوخة تلقائياً لتلصقها (Paste / أو الضغط على معاينة الصورة فوق الكيبورد) فتُرسل كصورة حقيقية فوراً.
-                </span>
-              </div>
+          {/* Phone Warning Alert */}
+          {phoneWarning && (
+            <div className="bg-amber-50 border border-amber-300 text-amber-900 px-3.5 py-2.5 rounded-xl text-xs flex items-center gap-2 animate-in shake duration-200 shadow-2xs">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span className="font-bold">{phoneWarning}</span>
             </div>
           )}
 
-          {/* SECTION 2: Send As PDF File */}
-          {onSharePdf && (
-            <div className="bg-indigo-50/50 border border-indigo-200 rounded-2xl p-3.5 space-y-2.5">
+          {/* Customer Phone Status & Field */}
+          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                <PhoneCall className="w-3.5 h-3.5 text-emerald-600" />
+                <span>رقم هاتف الزبون للإرسال المباشر:</span>
+              </label>
+
+              {/* Status Indicator */}
+              {phoneInfo.isValid ? (
+                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 border border-emerald-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <Zap className="w-3 h-3 text-emerald-600" />
+                  <span>دخول مباشر لمحادثته ✅</span>
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 text-amber-600" />
+                  <span>الرقم غير مسجل!</span>
+                </span>
+              )}
+            </div>
+
+            {/* Clear feedback showing the detected number and country */}
+            {phoneInfo.isValid ? (
+              <div className="bg-emerald-50/90 border border-emerald-200 rounded-lg p-2 text-xs flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">{phoneInfo.flag}</span>
+                  <div>
+                    <span className="text-[11px] text-emerald-950 font-black">
+                      تم قراءة الرقم بنجاح: <span dir="ltr" className="font-mono text-xs">{phoneInfo.formattedDisplay}</span>
+                    </span>
+                    <span className="text-[10px] text-emerald-700 block">
+                      الدولة: {phoneInfo.countryName} • جاهز لفتح المحادثة مباشرة
+                    </span>
+                  </div>
+                </div>
+                {onUpdatePhone && phone.trim() !== defaultPhone && (
+                  <button
+                    type="button"
+                    onClick={handleSavePhone}
+                    className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[10px] font-bold shadow-2xs cursor-pointer flex items-center gap-1"
+                    title="حفظ الرقم في الفاتورة"
+                  >
+                    <Save className="w-3 h-3" />
+                    <span>حفظ بالفاتورة</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="bg-amber-50/90 border border-amber-300 rounded-lg p-2 text-[11px] text-amber-950 flex items-start gap-1.5 leading-relaxed">
+                <span className="text-amber-600 font-bold shrink-0 mt-0.5">⚠️</span>
+                <span>
+                  <strong>تنبيه:</strong> هذه الفاتورة لا تحتوي على رقم هاتف مسجل للزبون! اكتب رقمه في الخانة أدناه ليتم نقلك فوراً إلى محادثته الخاصة دون أن يطلب منك واتساب البحث عن اسمه.
+                </span>
+              </div>
+            )}
+
+            {/* Phone Input Box */}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  ref={phoneInputRef}
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="مثال: 0961141216 أو 0599123456"
+                  dir="ltr"
+                  className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono text-left focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-hidden transition-all font-bold text-slate-900"
+                />
+                <span className="absolute left-3 top-2 text-[10px] text-slate-400 pointer-events-none">
+                  {phoneInfo.flag}
+                </span>
+              </div>
+
+              {onUpdatePhone && phone.trim() && (
+                <button
+                  type="button"
+                  onClick={handleSavePhone}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1 shadow-2xs"
+                  title="حفظ هذا الرقم في الفاتورة بشكل دائم"
+                >
+                  <Save className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>حفظ الرقم</span>
+                </button>
+              )}
+            </div>
+
+            {/* Country Shortcuts */}
+            <div className="flex flex-wrap items-center gap-1 pt-0.5">
+              <span className="text-[10px] text-slate-500 font-bold">المفتاح الدولي:</span>
+              {[
+                { code: '+963', label: '🇸🇾 سوريا (+963)' },
+                { code: '+970', label: '🇵🇸 فلسطين (+970)' },
+                { code: '+962', label: '🇯🇴 الأردن (+962)' },
+                { code: '+966', label: '🇸🇦 السعودية (+966)' },
+                { code: '+961', label: '🇱🇧 لبنان (+961)' },
+                { code: '+90', label: '🇹🇷 تركيا (+90)' },
+              ].map((c) => (
+                <button
+                  key={c.code}
+                  type="button"
+                  onClick={() => {
+                    setSelectedCountryCode(c.code);
+                    if (phone.startsWith('0') && !phone.startsWith('00')) {
+                      // Keep local number, selected country code applies automatically
+                    }
+                  }}
+                  className={`text-[9px] px-2 py-0.5 rounded-md font-semibold transition-all cursor-pointer border ${
+                    selectedCountryCode === c.code
+                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs font-bold'
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* SECTION 1: Send Directly To Customer via WhatsApp / WhatsApp Business */}
+          <div className="bg-gradient-to-br from-emerald-50/70 to-teal-50/70 border-2 border-emerald-400/80 rounded-2xl p-3.5 space-y-2.5 shadow-xs">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                  <Zap className="w-4 h-4 text-emerald-200" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-emerald-950">
+                    إرسال الفاتورة للزبون عبر واتساب (دخول مباشر ⚡)
+                  </h4>
+                  <p className="text-[10px] text-emerald-800">
+                    يفتح محادثة الزبون مباشرة برقم هاتفه، مع نسخ صورة الفاتورة للصقها فوراً
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] bg-emerald-600 text-white font-black px-2.5 py-0.5 rounded-full shadow-2xs">
+                مباشر للزبون
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              {/* WhatsApp Business (Direct To Customer) */}
+              <button
+                type="button"
+                onClick={() => handleTriggerDirectSend('business')}
+                className="flex items-center gap-2.5 p-3 bg-white hover:bg-teal-50 active:bg-teal-100 border-2 border-teal-600 rounded-xl text-right transition-all group cursor-pointer shadow-xs hover:shadow-md order-1 sm:order-2"
+              >
+                <div className="w-9 h-9 rounded-xl bg-teal-700 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
+                  <Briefcase className="w-5 h-5 text-teal-200" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-black text-slate-900 flex items-center justify-between">
+                    <span>واتساب للأعمال</span>
+                    <span className="bg-teal-700 text-white text-[9px] px-1.5 py-0.5 rounded font-mono font-black">
+                      Business
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-teal-700 font-bold truncate">
+                    دخول مباشر لمحادثة الزبون ⚡
+                  </div>
+                </div>
+              </button>
+
+              {/* Standard WhatsApp (Direct To Customer) */}
+              <button
+                type="button"
+                onClick={() => handleTriggerDirectSend('standard')}
+                className="flex items-center gap-2.5 p-3 bg-white hover:bg-emerald-50 active:bg-emerald-100 border-2 border-emerald-500 rounded-xl text-right transition-all group cursor-pointer shadow-xs hover:shadow-md order-2 sm:order-1"
+              >
+                <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
+                  <MessageSquare className="w-5 h-5 text-emerald-100" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-black text-slate-900 flex items-center justify-between">
+                    <span>واتساب العادي</span>
+                    <span className="bg-emerald-600 text-white text-[9px] px-1.5 py-0.5 rounded font-mono font-black">
+                      WhatsApp
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-emerald-700 font-bold truncate">
+                    دخول مباشر لمحادثة الزبون ⚡
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            <div className="bg-white/80 border border-emerald-200 rounded-xl p-2.5 text-[10px] text-emerald-950 flex items-start gap-1.5 leading-relaxed">
+              <span className="text-emerald-600 font-bold shrink-0 mt-0.5">💡</span>
+              <span>
+                <strong>كيف تعمل الميزة؟</strong> ينقلك التطبيق فوراً لمحادثة الزبون برقم هاتفه دون أي بحث، وتكون صورة الفاتورة منسوخة تلقائياً في الحافظة لتضغط <strong>(لصق / Paste)</strong> داخل المحادثة فتُرسل كصورة حقيقية فوراً، وبدون حفظ أي ملف في ذاكرة موبايلك.
+              </span>
+            </div>
+          </div>
+
+          {/* SECTION 2: Share Document File (PDF or Image) via System Share Sheet */}
+          {(onSharePdf || onShareImageFile) && (
+            <div className="bg-indigo-50/60 border border-indigo-200 rounded-2xl p-3.5 space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-2xs">
                     <FileDown className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-black text-indigo-950">إرسال الفاتورة كملف PDF 📄</h4>
-                    <p className="text-[10px] text-indigo-700">مستند رسمي عالي الجودة مع التوقيع في الذاكرة دون تنزيل</p>
+                    <h4 className="text-xs font-black text-indigo-950">
+                      مشاركة ملف الفاتورة كمستند (PDF / صورة) 📄
+                    </h4>
+                    <p className="text-[10px] text-indigo-700">
+                      إرسال ملف مستند رسمي في الذاكرة دون حفظه في هاتفك
+                    </p>
                   </div>
                 </div>
                 <span className="text-[10px] bg-indigo-200/80 text-indigo-800 font-bold px-2 py-0.5 rounded-full">
-                  مشاركة مستند
+                  ملف مستند
                 </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                {/* WhatsApp Business for PDF */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    onSharePdf(phone, 'business');
-                    setShareSuccess('جاري فتح المشاركة... اختر واتساب للأعمال لإرسال ملف الـ PDF');
-                  }}
-                  className="flex items-center gap-2.5 p-2.5 bg-white hover:bg-teal-50 active:bg-teal-100 border-2 border-teal-500 rounded-xl text-right transition-all group cursor-pointer shadow-2xs hover:shadow-xs order-1 sm:order-2"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-teal-700 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <Briefcase className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold text-slate-900 flex items-center justify-between">
-                      <span>واتساب للأعمال</span>
-                      <span className="bg-teal-700 text-white text-[9px] px-1 py-0.2 rounded font-mono font-bold">
-                        Business
-                      </span>
+                {onSharePdf && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSharePdf(phone, 'business');
+                      setShareSuccess('جاري فتح قائمة التطبيقات لمشاركة ملف الـ PDF...');
+                    }}
+                    className="flex items-center gap-2 p-2.5 bg-white hover:bg-indigo-50 active:bg-indigo-100 border border-indigo-300 rounded-xl text-right transition-all cursor-pointer shadow-2xs"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                      <FileText className="w-4 h-4" />
                     </div>
-                    <div className="text-[10px] text-teal-700 font-medium truncate">
-                      مشاركة ملف PDF
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-bold text-slate-900">مشاركة ملف PDF</div>
+                      <div className="text-[10px] text-indigo-700 truncate">مستند رسمي عالي الدقة</div>
                     </div>
-                  </div>
-                </button>
+                  </button>
+                )}
 
-                {/* Standard WhatsApp for PDF */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    onSharePdf(phone, 'standard');
-                    setShareSuccess('جاري فتح المشاركة... اختر واتساب لإرسال ملف الـ PDF');
-                  }}
-                  className="flex items-center gap-2.5 p-2.5 bg-white hover:bg-emerald-50 active:bg-emerald-100 border-2 border-emerald-400 rounded-xl text-right transition-all group cursor-pointer shadow-2xs hover:shadow-xs order-2 sm:order-1"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <MessageSquare className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                      <span>واتساب العادي</span>
+                {onShareImageFile && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onShareImageFile();
+                      setShareSuccess('جاري فتح قائمة التطبيقات لمشاركة ملف الصورة...');
+                    }}
+                    className="flex items-center gap-2 p-2.5 bg-white hover:bg-purple-50 active:bg-purple-100 border border-purple-300 rounded-xl text-right transition-all cursor-pointer shadow-2xs"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0">
+                      <ImageIcon className="w-4 h-4" />
                     </div>
-                    <div className="text-[10px] text-emerald-700 font-medium truncate">
-                      مشاركة ملف PDF
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-bold text-slate-900">مشاركة كملف صورة</div>
+                      <div className="text-[10px] text-purple-700 truncate">ملف صورة PNG للمستند</div>
                     </div>
-                  </div>
-                </button>
+                  </button>
+                )}
               </div>
 
-              <div className="bg-indigo-100/50 rounded-xl p-2 text-[10px] text-indigo-900 flex items-start gap-1.5 leading-relaxed">
+              <div className="bg-indigo-100/60 rounded-xl p-2 text-[10px] text-indigo-900 flex items-start gap-1.5 leading-relaxed">
                 <span className="text-indigo-600 font-bold shrink-0 mt-0.5">ℹ️</span>
                 <span>
-                  <strong>مشاركة المستندات:</strong> يتم إرسال ملف الـ PDF مباشرة في الذاكرة دون حفظه في هاتفك. وتفتح نافذة المشاركة لتحديد التطبيق والجهة المستلمة وفق معايير أمان أندرويد.
+                  <strong>ملاحظة أمان أندرويد:</strong> إرسال ملف الـ PDF كملف مستند يتم عبر نافذة النظام لتحديد التطبيق المستلم. إذا أردت الانتقال الفوري لمحادثة الزبون دون فتح نافذة النظام، استخدم أزرار الواتساب الخضراء بالأعلى.
                 </span>
               </div>
             </div>
           )}
 
-          {/* SECTION 3: Download and Save Locally */}
+          {/* SECTION 3: Download and Save Locally (Optional) */}
           {(onDownloadPdf || onDownloadImage) && (
             <div className="space-y-1.5">
               <div className="text-[11px] font-bold text-slate-600">
-                حفظ المستند على الجهاز:
+                حفظ الفاتورة على الجهاز (اختياري):
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {onDownloadPdf && (
@@ -331,7 +470,7 @@ export const WhatsAppShareModal: React.FC<Props> = ({
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-bold text-rose-950">تحميل ملف PDF</div>
-                      <div className="text-[10px] text-rose-700 truncate">حفظ المستند في جهازك</div>
+                      <div className="text-[10px] text-rose-700 truncate">حفظ المستند في هاتفك</div>
                     </div>
                   </button>
                 )}
@@ -350,7 +489,7 @@ export const WhatsAppShareModal: React.FC<Props> = ({
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-bold text-fuchsia-950">حفظ كصورة 🖼️</div>
-                      <div className="text-[10px] text-fuchsia-700 truncate">حفظ في المعرض / التنزيلات</div>
+                      <div className="text-[10px] text-fuchsia-700 truncate">حفظ في معرض الصور</div>
                     </div>
                   </button>
                 )}
@@ -358,7 +497,7 @@ export const WhatsAppShareModal: React.FC<Props> = ({
             </div>
           )}
 
-          {/* SECTION 4: Native Share and Copy Text */}
+          {/* SECTION 4: Native Share & Text Copy */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
             {hasNativeShare && (
               <button
