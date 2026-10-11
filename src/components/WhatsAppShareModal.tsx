@@ -101,6 +101,15 @@ export const WhatsAppShareModal: React.FC<Props> = ({
             </div>
           )}
 
+          {/* Privacy & No-Storage Notice */}
+          <div className="bg-blue-50/70 border border-blue-200/80 rounded-xl p-2.5 text-[11px] text-blue-900 flex items-start gap-2">
+            <span className="text-blue-600 text-xs shrink-0 mt-0.5">💡</span>
+            <div>
+              <span className="font-bold">مشاركة مباشرة وآمنة: </span>
+              يتم إرسال الصورة أو ملف الـ PDF مباشرة في الذاكرة دون حفظه على ذاكرة هاتفك. عند الضغط تفتح قائمة المشاركة، اختر منها تطبيق <strong className="text-teal-800">واتساب للأعمال</strong> أو <strong className="text-emerald-800">واتساب</strong> لإرسال الفاتورة فوراً للزبون كصورة أو ملف.
+            </div>
+          </div>
+
           {/* Customer Phone Input Field */}
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
             <div className="flex items-center justify-between mb-1.5">
@@ -156,7 +165,7 @@ export const WhatsAppShareModal: React.FC<Props> = ({
                   type="button"
                   onClick={() => {
                     onShareImage(phone, 'standard');
-                    setShareSuccess('جاري فتح محادثة الزبون عبر واتساب العادي...');
+                    setShareSuccess('جاري فتح المشاركة... اختر أيقونة (واتساب) لإرسال الصورة للزبون مباشرة');
                   }}
                   className="flex items-center gap-2.5 p-2.5 bg-white hover:bg-emerald-50 active:bg-emerald-100 border-2 border-emerald-400 rounded-xl text-right transition-all group cursor-pointer shadow-2xs hover:shadow-xs"
                 >
@@ -178,7 +187,7 @@ export const WhatsAppShareModal: React.FC<Props> = ({
                   type="button"
                   onClick={() => {
                     onShareImage(phone, 'business');
-                    setShareSuccess('جاري فتح محادثة الزبون عبر واتساب الأعمال...');
+                    setShareSuccess('جاري فتح المشاركة... اختر أيقونة (واتساب للأعمال) لإرسال الصورة للزبون مباشرة');
                   }}
                   className="flex items-center gap-2.5 p-2.5 bg-white hover:bg-teal-50 active:bg-teal-100 border-2 border-teal-500 rounded-xl text-right transition-all group cursor-pointer shadow-2xs hover:shadow-xs"
                 >
@@ -225,7 +234,7 @@ export const WhatsAppShareModal: React.FC<Props> = ({
                   type="button"
                   onClick={() => {
                     onSharePdf(phone, 'standard');
-                    setShareSuccess('جاري إرسال ملف PDF عبر واتساب العادي...');
+                    setShareSuccess('جاري فتح المشاركة... اختر أيقونة (واتساب) لإرسال ملف الـ PDF مباشرة');
                   }}
                   className="flex items-center gap-2.5 p-2.5 bg-white hover:bg-emerald-50 active:bg-emerald-100 border-2 border-emerald-400 rounded-xl text-right transition-all group cursor-pointer shadow-2xs hover:shadow-xs"
                 >
@@ -247,7 +256,7 @@ export const WhatsAppShareModal: React.FC<Props> = ({
                   type="button"
                   onClick={() => {
                     onSharePdf(phone, 'business');
-                    setShareSuccess('جاري إرسال ملف PDF عبر واتساب الأعمال...');
+                    setShareSuccess('جاري فتح المشاركة... اختر أيقونة (واتساب للأعمال) لإرسال ملف الـ PDF مباشرة');
                   }}
                   className="flex items-center gap-2.5 p-2.5 bg-white hover:bg-teal-50 active:bg-teal-100 border-2 border-teal-500 rounded-xl text-right transition-all group cursor-pointer shadow-2xs hover:shadow-xs"
                 >

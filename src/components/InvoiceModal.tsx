@@ -167,7 +167,6 @@ export const InvoiceModal: React.FC<Props> = ({
     }
   };
 
-  // Native PDF File Share (via Share Sheet as external attachment)
   // Share PDF File via WhatsApp (Standard or Business) or System Share
   const executeSharePdf = async (
     phoneToUse?: string,
@@ -178,70 +177,38 @@ export const InvoiceModal: React.FC<Props> = ({
     try {
       const cleanCustomer = (currentOrder.customerName || 'الزبون').replace(/[\/\\?%*:|"<>]/g, '-').trim();
       const fileName = `فاتورة_${cleanCustomer}_${currentOrder.orderNumber}.pdf`;
+      // Generate in memory only - NEVER download to device memory!
       const file = await exportElementToPdf(invoicePaperRef.current, fileName, { autoDownload: false });
       if (file) {
-        const targetPhone = phoneToUse !== undefined && phoneToUse.trim() ? phoneToUse.trim() : currentOrder.customerPhone;
         const appLabel = appType === 'business' ? 'واتساب الأعمال (Business)' : 'واتساب العادي';
 
-        // Copy message text to clipboard
-        await copyToClipboard(messageText);
-
-        // First attempt native share with the PDF file
-        let shared = false;
+        // Share the PDF file directly via native sharing (without saving to phone storage)
         if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
-          shared = await shareFileDirectly(
+          const shared = await shareFileDirectly(
             file,
             `فاتورة ${currentOrder.orderNumber} - ${cleanCustomer}`,
-            `فاتورة رقم ${currentOrder.orderNumber} الصادرة من ${settings.workshopName}`
+            `فاتورة رقم ${currentOrder.orderNumber} - ${settings.workshopName}`
           );
-        }
-
-        if (shared) {
-          setPdfSuccessMessage(`تمت مشاركة الفاتورة PDF بنجاح! اختر ${appLabel} لإرسالها للزبون.`);
-        } else {
-          // If direct file sharing is cancelled or unsupported, open the specific WhatsApp chat directly
-          if (targetPhone && targetPhone.trim()) {
-            openWhatsApp({
-              phone: targetPhone.trim(),
-              text: messageText,
-              type: appType,
-              countryCode: settings.defaultCountryCode || '+963',
-            });
-
-            // Also trigger a clean download so user can attach the file directly
-            const url = URL.createObjectURL(file);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(url), 2000);
-
-            setPdfSuccessMessage(`🚀 تم فتح محادثة الزبون في ${appLabel} وتجهيز ملف PDF لإرفاقه كمستند.`);
-          } else {
-            const url = URL.createObjectURL(file);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(url), 2000);
-            setPdfSuccessMessage(`تم تحميل ملف PDF الفاتورة بنجاح.`);
+          if (shared) {
+            setPdfSuccessMessage(`تمت مشاركة الفاتورة PDF بنجاح! اختر ${appLabel} لإرسالها.`);
           }
+        } else {
+          // If native file sharing is not supported (e.g. desktop), notify user without forced download
+          setPdfSuccessMessage(`مشاركة الملفات المباشرة غير مدعومة في متصفحك. يمكنك استخدام زر "تحميل ملف PDF" لحفظها.`);
         }
-        setTimeout(() => setPdfSuccessMessage(null), 6000);
+        setTimeout(() => setPdfSuccessMessage(null), 5000);
       }
-    } catch (err) {
-      console.error(err);
-      alert('حدث خطأ أثناء تجهيز ملف PDF للمشاركة، يرجى المحاولة مرة أخرى.');
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        console.error(err);
+        alert('حدث خطأ أثناء تجهيز ملف PDF للمشاركة، يرجى المحاولة مرة أخرى.');
+      }
     } finally {
       setIsGeneratingPdf(false);
     }
   };
 
-  // Direct Execution: Copies invoice image to clipboard and opens WhatsApp directly into customer's chat
+  // Share Invoice Image directly to WhatsApp (Standard or Business) as a real Image (NOT text)
   const executeShareImage = async (
     phoneToUse?: string,
     appType: 'standard' | 'business' | 'auto' = 'auto'
@@ -251,39 +218,44 @@ export const InvoiceModal: React.FC<Props> = ({
     try {
       const cleanCustomer = (currentOrder.customerName || 'الزبون').replace(/[\/\\?%*:|"<>]/g, '-').trim();
       const fileName = `فاتورة_${cleanCustomer}_${currentOrder.orderNumber}.png`;
-      // autoDownload: false -> directly in memory without saving to device storage!
+      // Generate image in memory only - NEVER download to phone memory!
       const file = await exportElementToImage(invoicePaperRef.current, fileName, { autoDownload: false });
       if (file) {
-        // Copy image to clipboard for instant 1-tap pasting inside WhatsApp chat
-        await copyImageBlobToClipboard(file);
-
-        const targetPhone = phoneToUse !== undefined && phoneToUse.trim() ? phoneToUse.trim() : currentOrder.customerPhone;
         const appLabel = appType === 'business' ? 'واتساب الأعمال (Business)' : 'واتساب العادي';
 
-        if (targetPhone && targetPhone.trim()) {
-          // DIRECT AUTOMATIC ROUTE: Opens WhatsApp directly into the customer's chat!
-          openWhatsApp({
-            phone: targetPhone.trim(),
-            text: messageText,
-            type: appType,
-            countryCode: settings.defaultCountryCode || '+963',
-          });
-          setPdfSuccessMessage(`🚀 تم الدخول لمحادثة (${currentOrder.customerName}) عبر ${appLabel}! تم نسخ صورة الفاتورة: اضغط (لصق / Paste) في شريط الرسالة للإرسال فوراً.`);
+        // 1. On Mobile: Share the ACTUAL IMAGE FILE directly so it opens as an image in WhatsApp!
+        if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
+          const shared = await shareFileDirectly(
+            file,
+            `فاتورة ${currentOrder.orderNumber} - ${cleanCustomer}`,
+            `فاتورة رقم ${currentOrder.orderNumber} - ${settings.workshopName}`
+          );
+          if (shared) {
+            setPdfSuccessMessage(`تمت مشاركة صورة الفاتورة بنجاح! اختر ${appLabel} لإرسال الصورة.`);
+          }
         } else {
-          // Open WhatsApp app with pre-filled message
-          openWhatsApp({
-            phone: '',
-            text: messageText,
-            type: appType,
-            countryCode: settings.defaultCountryCode || '+963',
-          });
-          setPdfSuccessMessage(`تم فتح ${appLabel} وتجهيز نص الفاتورة! تم نسخ صورة الفاتورة للصقها.`);
+          // 2. Desktop Fallback: Copy image to clipboard so user can paste it (Ctrl+V) in WhatsApp Web
+          await copyImageBlobToClipboard(file);
+          const targetPhone = phoneToUse !== undefined && phoneToUse.trim() ? phoneToUse.trim() : currentOrder.customerPhone;
+          if (targetPhone && targetPhone.trim()) {
+            openWhatsApp({
+              phone: targetPhone.trim(),
+              text: messageText,
+              type: appType,
+              countryCode: settings.defaultCountryCode || '+963',
+            });
+            setPdfSuccessMessage(`تم نسخ صورة الفاتورة للحافظة! يمكنك لصقها (Paste / Ctrl+V) داخل المحادثة.`);
+          } else {
+            setPdfSuccessMessage(`تم نسخ صورة الفاتورة للحافظة بنجاح!`);
+          }
         }
-        setTimeout(() => setPdfSuccessMessage(null), 6000);
+        setTimeout(() => setPdfSuccessMessage(null), 5000);
       }
-    } catch (err) {
-      console.error(err);
-      alert('حدث خطأ أثناء تجهيز صورة الفاتورة، يرجى المحاولة مرة أخرى.');
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        console.error(err);
+        alert('حدث خطأ أثناء تجهيز صورة الفاتورة، يرجى المحاولة مرة أخرى.');
+      }
     } finally {
       setIsGeneratingImage(false);
     }

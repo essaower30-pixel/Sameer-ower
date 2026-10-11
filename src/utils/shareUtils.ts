@@ -133,37 +133,29 @@ export function openWhatsApp({
   if (cleanedPhone) {
     const waMeUrl = `https://wa.me/${cleanedPhone}?text=${encodedText}`;
 
-    // On Android: if user explicitly selected WhatsApp Business and wants intent
+    // On Android: if user explicitly selected WhatsApp Business
     if (type === 'business' && isAndroid) {
       const intentUrl = `intent://send?phone=${cleanedPhone}&text=${encodedText}#Intent;package=com.whatsapp.w4b;scheme=whatsapp;end`;
       try {
         window.location.href = intentUrl;
-        setTimeout(() => {
-          // Fallback if WhatsApp Business app package is not found
-          window.location.href = waMeUrl;
-        }, 1200);
         return;
       } catch (e) {
         console.warn('Failed to launch WhatsApp Business via intent', e);
       }
     }
 
-    // On Android: if user explicitly selected standard WhatsApp and wants intent
+    // On Android: if user explicitly selected standard WhatsApp
     if (type === 'standard' && isAndroid) {
       const intentUrl = `intent://send?phone=${cleanedPhone}&text=${encodedText}#Intent;package=com.whatsapp;scheme=whatsapp;end`;
       try {
         window.location.href = intentUrl;
-        setTimeout(() => {
-          window.location.href = waMeUrl;
-        }, 1200);
         return;
       } catch (e) {
         console.warn('Failed to launch WhatsApp via intent', e);
       }
     }
 
-    // Universal route for Auto, iOS, Desktop and all Android configurations:
-    // https://wa.me/ is official and opens directly into the contact chat without contact picker
+    // Universal route for Auto, iOS, Desktop and Android:
     if (isMobile) {
       window.location.href = waMeUrl;
     } else {
@@ -177,9 +169,6 @@ export function openWhatsApp({
     const intentUrl = `intent://send?text=${encodedText}#Intent;package=com.whatsapp.w4b;scheme=whatsapp;end`;
     try {
       window.location.href = intentUrl;
-      setTimeout(() => {
-        window.location.href = `https://api.whatsapp.com/send?text=${encodedText}`;
-      }, 1200);
       return;
     } catch (e) {
       console.warn('Failed to launch WhatsApp Business via intent', e);
@@ -190,9 +179,6 @@ export function openWhatsApp({
     const intentUrl = `intent://send?text=${encodedText}#Intent;package=com.whatsapp;scheme=whatsapp;end`;
     try {
       window.location.href = intentUrl;
-      setTimeout(() => {
-        window.location.href = `https://api.whatsapp.com/send?text=${encodedText}`;
-      }, 1200);
       return;
     } catch (e) {
       console.warn('Failed to launch WhatsApp via intent', e);
