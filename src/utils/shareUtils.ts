@@ -44,41 +44,36 @@ export function cleanPhoneNumber(phone?: string, defaultCountryCode?: string): s
     }
   }
 
-  // 5. Local phone numbers starting with '0'
+  // 5. Auto-detection based on distinct national mobile prefixes (takes priority over default code)
   if (cleaned.startsWith('0')) {
     const withoutZero = cleaned.substring(1);
 
-    // If explicit default country code is provided, use it
-    if (defaultCountryCode) {
-      return `${defaultCode}${withoutZero}`;
-    }
-
-    // Auto-detection based on common regional prefixes:
     // Syria: starts with 09... (e.g. 0961141216 -> 963961141216)
     if (cleaned.startsWith('09')) {
       return `963${withoutZero}`;
     }
-    // Palestine: starts with 059... or 056...
+    // Palestine: starts with 059... or 056... (Jawwal & Ooredoo)
     if (cleaned.startsWith('059') || cleaned.startsWith('056')) {
       return `970${withoutZero}`;
     }
-    // Jordan: starts with 07...
+    // Jordan: starts with 077, 078, 079
     if (cleaned.startsWith('07')) {
       return `962${withoutZero}`;
     }
-    // Saudi Arabia: starts with 05...
-    if (cleaned.startsWith('05')) {
-      return `966${withoutZero}`;
-    }
-    // Egypt: starts with 01...
+    // Egypt: starts with 010, 011, 012, 015
     if (cleaned.startsWith('01')) {
       return `20${withoutZero}`;
     }
-    // Lebanon: starts with 03...
+    // Saudi Arabia: starts with 05 (050, 053, 054, 055, 056, 058, 059)
+    if (cleaned.startsWith('05') && cleaned.length === 10) {
+      return `966${withoutZero}`;
+    }
+    // Lebanon: starts with 03
     if (cleaned.startsWith('03')) {
       return `961${withoutZero}`;
     }
 
+    // If none of the specific national prefixes matched, use default country code
     return `${defaultCode}${withoutZero}`;
   }
 
@@ -120,8 +115,8 @@ export async function copyImageBlobToClipboard(blob: Blob): Promise<boolean> {
 
 /**
  * Opens WhatsApp Messenger or WhatsApp Business directly into the customer's chat.
- * Uses official direct deep-links that bypass the contact-picker and immediately navigate
- * to the specified phone number.
+ * Uses official direct deep-links (https://wa.me/<phone>) that bypass the contact-picker
+ * and immediately navigate to the customer's chat with the pre-filled invoice message.
  */
 export function openWhatsApp({
   phone,
@@ -136,16 +131,16 @@ export function openWhatsApp({
 
   // When a valid customer phone is available, open the exact chat directly!
   if (cleanedPhone) {
-    const directUrl = `https://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodedText}`;
+    const waMeUrl = `https://wa.me/${cleanedPhone}?text=${encodedText}`;
 
-    // On Android: if user explicitly selected WhatsApp Business, use the verified package intent
+    // On Android: if user explicitly selected WhatsApp Business and wants intent
     if (type === 'business' && isAndroid) {
-      const intentUrl = `intent://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodedText}#Intent;package=com.whatsapp.w4b;scheme=https;end`;
+      const intentUrl = `intent://send?phone=${cleanedPhone}&text=${encodedText}#Intent;package=com.whatsapp.w4b;scheme=whatsapp;end`;
       try {
         window.location.href = intentUrl;
         setTimeout(() => {
-          // Fallback if WhatsApp Business app is not installed
-          window.location.href = directUrl;
+          // Fallback if WhatsApp Business app package is not found
+          window.location.href = waMeUrl;
         }, 1200);
         return;
       } catch (e) {
@@ -153,13 +148,13 @@ export function openWhatsApp({
       }
     }
 
-    // On Android: if user explicitly selected standard WhatsApp, target com.whatsapp
+    // On Android: if user explicitly selected standard WhatsApp and wants intent
     if (type === 'standard' && isAndroid) {
-      const intentUrl = `intent://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodedText}#Intent;package=com.whatsapp;scheme=https;end`;
+      const intentUrl = `intent://send?phone=${cleanedPhone}&text=${encodedText}#Intent;package=com.whatsapp;scheme=whatsapp;end`;
       try {
         window.location.href = intentUrl;
         setTimeout(() => {
-          window.location.href = directUrl;
+          window.location.href = waMeUrl;
         }, 1200);
         return;
       } catch (e) {
@@ -167,11 +162,12 @@ export function openWhatsApp({
       }
     }
 
-    // Universal route for Auto, iOS, Desktop and all Android configurations
+    // Universal route for Auto, iOS, Desktop and all Android configurations:
+    // https://wa.me/ is official and opens directly into the contact chat without contact picker
     if (isMobile) {
-      window.location.href = directUrl;
+      window.location.href = waMeUrl;
     } else {
-      window.open(directUrl, '_blank', 'noopener,noreferrer');
+      window.open(waMeUrl, '_blank', 'noopener,noreferrer');
     }
     return;
   }

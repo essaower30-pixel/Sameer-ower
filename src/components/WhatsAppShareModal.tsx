@@ -24,8 +24,8 @@ interface Props {
   messageText: string;
   onClose: () => void;
   onDownloadPdf?: () => void;
-  onSharePdf?: () => void;
-  onShareImage?: () => void;
+  onSharePdf?: (phoneOverride?: string) => void;
+  onShareImage?: (phoneOverride?: string) => void;
   onDownloadImage?: () => void;
 }
 
@@ -168,7 +168,7 @@ export const WhatsAppShareModal: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    onShareImage();
+                    onShareImage(phone);
                     setShareSuccess('جاري الانتقال لمحادثة الزبون مباشرة...');
                   }}
                   className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer shrink-0 transition-all"
@@ -188,7 +188,7 @@ export const WhatsAppShareModal: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    onSharePdf();
+                    onSharePdf(phone);
                     setShareSuccess('جاري إرسال الفاتورة كملف PDF...');
                   }}
                   className="flex items-center gap-3 p-3 bg-indigo-50 hover:bg-indigo-100/90 active:bg-indigo-200 border-2 border-indigo-300/80 rounded-xl text-right transition-all group cursor-pointer"
@@ -212,7 +212,7 @@ export const WhatsAppShareModal: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    onShareImage();
+                    onShareImage(phone);
                     setShareSuccess('جاري إرسال الفاتورة كصورة...');
                   }}
                   className="flex items-center gap-3 p-3 bg-purple-50 hover:bg-purple-100/90 active:bg-purple-200 border-2 border-purple-300/80 rounded-xl text-right transition-all group cursor-pointer"

@@ -64,6 +64,7 @@ export const InvoiceModal: React.FC<Props> = ({
   const [isCollectingPayment, setIsCollectingPayment] = useState(false);
   const [isEditHeaderModalOpen, setIsEditHeaderModalOpen] = useState(false);
   const [isCustomerPhoneModalOpen, setIsCustomerPhoneModalOpen] = useState(false);
+  const [isPdfShareModalOpen, setIsPdfShareModalOpen] = useState(false);
   const [phoneModalInput, setPhoneModalInput] = useState(initialOrder.customerPhone || '');
   const [headerFormData, setHeaderFormData] = useState({
     workshopName: settings.workshopName,
@@ -73,7 +74,7 @@ export const InvoiceModal: React.FC<Props> = ({
     email: settings.email || '',
     fontFamily: settings.fontFamily || 'Cairo',
     defaultCountryCode: settings.defaultCountryCode || '+963',
-    preferredWhatsAppType: settings.preferredWhatsAppType || 'business',
+    preferredWhatsAppType: settings.preferredWhatsAppType || 'auto',
     invoiceNotes: settings.invoiceNotes || '',
     showTermsHeading: !!settings.showTermsHeading,
     hideTermsBox: !!settings.hideTermsBox,
@@ -89,7 +90,7 @@ export const InvoiceModal: React.FC<Props> = ({
       email: settings.email || '',
       fontFamily: settings.fontFamily || 'Cairo',
       defaultCountryCode: settings.defaultCountryCode || '+963',
-      preferredWhatsAppType: settings.preferredWhatsAppType || 'business',
+      preferredWhatsAppType: settings.preferredWhatsAppType || 'auto',
       invoiceNotes: settings.invoiceNotes || '',
       showTermsHeading: !!settings.showTermsHeading,
       hideTermsBox: !!settings.hideTermsBox,
@@ -105,7 +106,7 @@ export const InvoiceModal: React.FC<Props> = ({
       email: settings.email || '',
       fontFamily: settings.fontFamily || 'Cairo',
       defaultCountryCode: settings.defaultCountryCode || '+963',
-      preferredWhatsAppType: settings.preferredWhatsAppType || 'business',
+      preferredWhatsAppType: settings.preferredWhatsAppType || 'auto',
       invoiceNotes: settings.invoiceNotes || '',
       showTermsHeading: !!settings.showTermsHeading,
       hideTermsBox: !!settings.hideTermsBox,
@@ -166,7 +167,8 @@ export const InvoiceModal: React.FC<Props> = ({
     }
   };
 
-  const handleSharePdf = async () => {
+  // Native PDF File Share (via Share Sheet as external attachment)
+  const handleSharePdfNative = async () => {
     if (!invoicePaperRef.current) return;
     setIsGeneratingPdf(true);
     try {
@@ -194,15 +196,6 @@ export const InvoiceModal: React.FC<Props> = ({
             document.body.removeChild(a);
             setTimeout(() => URL.revokeObjectURL(url), 2000);
           }
-          setPdfSuccessMessage(`جاري فتح واتساب لإرسال الفاتورة...`);
-          setTimeout(() => {
-            openWhatsApp({
-              phone: currentOrder.customerPhone,
-              text: `السلام عليكم ${currentOrder.customerName}، مرفق فاتورة رقم ${currentOrder.orderNumber} الصادرة من ورشة ${settings.workshopName}.`,
-              type: settings.preferredWhatsAppType || 'business',
-              countryCode: settings.defaultCountryCode || '+963',
-            });
-          }, 1200);
         }
         setTimeout(() => setPdfSuccessMessage(null), 5000);
       }
@@ -212,6 +205,11 @@ export const InvoiceModal: React.FC<Props> = ({
     } finally {
       setIsGeneratingPdf(false);
     }
+  };
+
+  // Open PDF Share / Options Modal
+  const handleSharePdf = () => {
+    setIsPdfShareModalOpen(true);
   };
 
   // Direct Execution: Copies invoice image to clipboard and opens WhatsApp directly into customer's chat
@@ -227,26 +225,20 @@ export const InvoiceModal: React.FC<Props> = ({
         // Copy image to clipboard for instant 1-tap pasting inside WhatsApp chat
         await copyImageBlobToClipboard(file);
 
-        const targetPhone = phoneToUse !== undefined ? phoneToUse : currentOrder.customerPhone;
+        const targetPhone = phoneToUse !== undefined && phoneToUse.trim() ? phoneToUse.trim() : currentOrder.customerPhone;
         if (targetPhone && targetPhone.trim()) {
-          // DIRECT AUTOMATIC ROUTE: Opens WhatsApp / WhatsApp Business directly into the customer's chat!
+          // DIRECT AUTOMATIC ROUTE: Opens WhatsApp directly into the customer's chat!
           openWhatsApp({
             phone: targetPhone.trim(),
             text: messageText,
-            type: settings.preferredWhatsAppType || 'business',
+            type: settings.preferredWhatsAppType || 'auto',
             countryCode: settings.defaultCountryCode || '+963',
           });
-          setPdfSuccessMessage(`🚀 تم الدخول لمحادثة (${currentOrder.customerName}) مباشرة وتجهيز الفاتورة! تم نسخ صورة الفاتورة: اضغط (لصق / Paste) في شريط الرسالة للإرسال فوراً.`);
+          setPdfSuccessMessage(`🚀 تم الدخول لمحادثة (${currentOrder.customerName}) تلقائياً وتجهيز الفاتورة! تم نسخ صورة الفاتورة: اضغط (لصق / Paste) في شريط الرسالة للإرسال فوراً.`);
         } else {
-          // If no phone was entered, fallback to native share
-          const shared = await shareFileDirectly(
-            file,
-            `فاتورة ${currentOrder.orderNumber} - ${cleanCustomer}`,
-            `السلام عليكم ${currentOrder.customerName}، مرفق صورة فاتورة رقم ${currentOrder.orderNumber} من ${settings.workshopName}`
-          );
-          if (shared) {
-            setPdfSuccessMessage(`تم فتح قائمة المشاركة لإرسال صورة الفاتورة بنجاح!`);
-          }
+          // If no phone was entered, prompt for phone so user NEVER has to manually search
+          setPhoneModalInput('');
+          setIsCustomerPhoneModalOpen(true);
         }
         setTimeout(() => setPdfSuccessMessage(null), 6000);
       }
@@ -284,26 +276,14 @@ export const InvoiceModal: React.FC<Props> = ({
     executeShareImage(phoneVal);
   };
 
-  // Optional: Share image file through device's native chooser (Share Sheet)
+  // Send image directly to customer chat (or prompts if missing)
   const handleShareImageNative = async () => {
-    if (!invoicePaperRef.current) return;
-    setIsGeneratingImage(true);
-    try {
-      const cleanCustomer = (currentOrder.customerName || 'الزبون').replace(/[\/\\?%*:|"<>]/g, '-').trim();
-      const fileName = `فاتورة_${cleanCustomer}_${currentOrder.orderNumber}.png`;
-      const file = await exportElementToImage(invoicePaperRef.current, fileName, { autoDownload: false });
-      if (file) {
-        await shareFileDirectly(
-          file,
-          `فاتورة ${currentOrder.orderNumber} - ${cleanCustomer}`,
-          `السلام عليكم ${currentOrder.customerName}، مرفق صورة فاتورة رقم ${currentOrder.orderNumber} من ${settings.workshopName}`
-        );
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsGeneratingImage(false);
+    if (!currentOrder.customerPhone || !currentOrder.customerPhone.trim()) {
+      setPhoneModalInput('');
+      setIsCustomerPhoneModalOpen(true);
+      return;
     }
+    await executeShareImage();
   };
 
   const handleDownloadImage = async () => {
@@ -457,16 +437,16 @@ export const InvoiceModal: React.FC<Props> = ({
                 <span>إرسال PDF 📄</span>
               </button>
 
-              {/* Image as File via System Share Sheet */}
+              {/* Image Send Button */}
               <button
                 type="button"
                 disabled={isGeneratingPdf || isGeneratingImage}
-                onClick={handleShareImageNative}
+                onClick={handleShareImage}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-700 hover:bg-purple-600 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer disabled:opacity-50"
-                title="مشاركة ملف الصورة عبر قائمة التطبيقات (Share Sheet)"
+                title="إرسال الفاتورة كصورة لمحادثة الزبون مباشرة"
               >
                 <ImageIcon className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">مشاركة الصورة</span>
+                <span className="hidden sm:inline">إرسال كصورة</span>
               </button>
 
               {/* All Share Options Dialog Button */}
@@ -1110,9 +1090,17 @@ export const InvoiceModal: React.FC<Props> = ({
           subtitle={`فاتورة رقم: ${currentOrder.orderNumber} - الزبون: ${currentOrder.customerName}`}
           defaultPhone={currentOrder.customerPhone}
           messageText={messageText}
-          onSharePdf={handleSharePdf}
+          onSharePdf={(phoneOverride) => {
+            if (phoneOverride && phoneOverride.trim()) {
+              executeShareImage(phoneOverride.trim());
+            } else {
+              setIsPdfShareModalOpen(true);
+            }
+          }}
           onDownloadPdf={handleDownloadPdf}
-          onShareImage={handleShareImage}
+          onShareImage={(phoneOverride) => {
+            executeShareImage(phoneOverride);
+          }}
           onDownloadImage={handleDownloadImage}
           onClose={() => setIsShareModalOpen(false)}
         />
@@ -1439,6 +1427,116 @@ export const InvoiceModal: React.FC<Props> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* PDF Sharing Options Modal */}
+      {isPdfShareModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto font-['Cairo',sans-serif]">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-right">
+            <div className="px-5 py-3.5 bg-gradient-to-r from-indigo-900 to-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center">
+                  <FileDown className="w-4 h-4 text-indigo-300" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold">إرسال الفاتورة للزبون</h3>
+                  <p className="text-[11px] text-indigo-200">{currentOrder.customerName || 'الزبون'} ({currentOrder.orderNumber})</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPdfShareModalOpen(false)}
+                className="p-1 text-white/70 hover:text-white rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-3.5">
+              {/* Option 1: Direct Automatic Route (Recommended) */}
+              <div
+                onClick={() => {
+                  setIsPdfShareModalOpen(false);
+                  handleShareImage();
+                }}
+                className="p-3.5 bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-500 rounded-2xl cursor-pointer hover:border-emerald-600 hover:shadow-md transition-all group"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-base shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                      ⚡
+                    </div>
+                    <div>
+                      <div className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                        <span>إرسال تلقائي مباشر لمحادثة الزبون</span>
+                        <span className="px-1.5 py-0.5 bg-emerald-200 text-emerald-800 text-[10px] rounded-full font-bold">موصى به</span>
+                      </div>
+                      <div className="text-[11px] text-emerald-800 mt-0.5 leading-relaxed">
+                        يدخل فوراً لمحادثة ({currentOrder.customerPhone || 'الزبون'}) دون أي بحث. النص جاهز وصورة الفاتورة منسوخة للصق الفوري!
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Option 2: Attach Native PDF File */}
+              <div
+                onClick={() => {
+                  setIsPdfShareModalOpen(false);
+                  handleSharePdfNative();
+                }}
+                className="p-3.5 bg-indigo-50/60 hover:bg-indigo-50 border-2 border-indigo-200 hover:border-indigo-400 rounded-2xl cursor-pointer transition-all group"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                      <FileDown className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-black text-indigo-950">
+                        إرفاق ملف PDF كمستند رسمي
+                      </div>
+                      <div className="text-[11px] text-indigo-800 mt-0.5 leading-relaxed">
+                        ينشئ مستند PDF في الذاكرة لمشاركته كمستند. (يتطلب اختيار جهة الاتصال من قائمة واتساب حسب نظام الهاتف).
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Option 3: Download PDF */}
+              <div
+                onClick={() => {
+                  setIsPdfShareModalOpen(false);
+                  handleDownloadPdf();
+                }}
+                className="p-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl cursor-pointer transition-all flex items-center gap-3 group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-slate-700 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <Download className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-900">
+                    تحميل وحفظ ملف PDF على الهاتف
+                  </div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">
+                    تنزيل ملف الفاتورة مباشرة بصيغة PDF وطباعته أو حفظه.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 border-t border-slate-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsPdfShareModalOpen(false)}
+                className="px-4 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg cursor-pointer"
+              >
+                إغلاق
+              </button>
+            </div>
           </div>
         </div>
       )}
